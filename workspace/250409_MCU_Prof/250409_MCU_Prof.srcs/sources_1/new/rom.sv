@@ -10,6 +10,10 @@ module rom (
         //rom[x]=32'b fucn7 _ rs2 _ rs1 _f3 _ rd  _opcode; // R-Type
         rom[0] = 32'b0000000_00001_00010_000_00100_0110011; // add x4, x2, x1
         rom[1] = 32'b0100000_00001_00010_000_00101_0110011; // sub x5, x2, x1
+        //rom[x]=32'b imm7 _ rs2 _ rs1 _ f3 _ imm5 _opcode // S-Type
+        rom[2] = 32'b0000000_00010_00000_010_01000_0100011; // sw x2, 8(x0);
+        //rom[x]=32'b imm12      _ rs1 _ f3 _ rd _opcode // L-Type
+        rom[3] = 32'b000000001000_00000_010_00110_0000011; // lw x6 8(x0) 
     end
     assign data = rom[addr[31:2]];
 endmodule

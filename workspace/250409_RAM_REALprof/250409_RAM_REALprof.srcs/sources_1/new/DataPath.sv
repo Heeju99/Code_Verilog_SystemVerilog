@@ -5,21 +5,23 @@
 module DataPath (
     input  logic        clk,
     input  logic        reset,
+    //control unit side port
     input  logic [31:0] instrCode,
     output logic [31:0] instrMemAddr,
     input  logic        regFileWe,
     input  logic [ 3:0] aluControl,
     input  logic        aluSrcMuxSel,
+    input  logic        RFWDSrcMuxSel,
     output logic [31:0] dataAddr,
     output logic [31:0] dataWData,
     //additional
-    input logic  [31:0] rData
+    input logic  [31:0] dataRData
 );
     logic [31:0] aluResult, RFData1, RFData2;
     logic [31:0] PCSrcData, PCOutData;
     logic [31:0] immExt, aluSrcMuxOut;
     //additional
-    logic [31:0] ramMuxOut;
+    logic [31:0] RFWDSrcMuxOut;
 
     assign instrMemAddr = PCOutData; //to ROM
     assign dataAddr = aluResult; // to RAM
@@ -33,7 +35,7 @@ module DataPath (
         .RAddr1(instrCode[19:15]),
         .RAddr2(instrCode[24:20]),
         .WAddr(instrCode[11:7]),
-        .WData(ramMuxOut), //change aluResult
+        .WData(RFWDSrcMuxOut), //change aluResult
         .RData1(RFData1),
         .RData2(RFData2)
     );
@@ -51,14 +53,13 @@ module DataPath (
         .b(aluSrcMuxOut),
         .result(aluResult)
     );
-/// additional
-    mux_2x1 u_mux_2x1_RAM(
-        .sel(aluSrcMuxSel), //앞단 MUX
+
+    mux_2x1 u_RFWDSrcMux(
+        .sel(RFWDSrcMuxSel), //앞단 MUX
         .x0(aluResult), //Ram에서 나오는 Rdata
-        .x1(rData), // ALU에서 나오는거 
-        .y(ramMuxOut) //regfile WD로 들어오는것
+        .x1(dataRData), // ALU에서 나오는거 
+        .y(RFWDSrcMuxOut) //regfile WD로 들어오는것
 );
-///
 
     extend U_extend(
         .instrCode(instrCode),
@@ -170,12 +171,19 @@ module extend(
     wire [6:0] opcode = instrCode[6:0];
 
     always_comb begin
-        immExt = 32'bx;
+        immExt = 32'b0; //change -> 32'bx
         case(opcode)
             `OP_TYPE_R : immExt = 32'bx;
             `OP_TYPE_L : immExt = {{20{instrCode[31]}},instrCode[31:20]}; //32bit 확장을 위함 + (+,-) 나타내기 
             `OP_TYPE_S : immExt = {{20{instrCode[31]}},instrCode[31:25], instrCode[11:7]}; //떨어져 있어도 12개 동일
-            default: immExt = 32'bx;
+            //additional
+            `OP_TYPE_I : begin
+                if(instrCode[14:12] == (3'b001 ||3'b101)) 
+                immExt = {{27{instrCode[24]}},instrCode[24:20]};
+                else
+                immExt = {{20{instrCode[31]}},instrCode[31:20]};
+            end
+            default: immExt = 32'b0; //change -> 32'bx
         endcase
     end
 endmodule
