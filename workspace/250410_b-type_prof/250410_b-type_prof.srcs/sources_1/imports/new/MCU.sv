@@ -18,10 +18,10 @@ module MCU (
         .data(instrCode)
     );
 
-    ram U_RAM(
-        .clk(clk),
-        .we(dataWe),
-        .addr(dataAddr),
+    ram U_RAM (
+        .clk  (clk),
+        .we   (dataWe),
+        .addr (dataAddr),
         .wData(dataWData),
         .rData(dataRData)
     );
