@@ -9,7 +9,11 @@ module DataPath (
     input  logic        regFileWe,
     input  logic [ 3:0] aluControl,
     input  logic        aluSrcMuxSel,
-    input  logic        RFWDSrcMuxSel,
+    input  logic [ 1:0] RFWDSrcMuxSel,
+    input  logic        branch,
+    //additional
+    input logic         LUIMuxSel,
+    // 
     // instr memory side port
     output logic [31:0] instrMemAddr,
     input  logic [31:0] instrCode,
@@ -21,12 +25,14 @@ module DataPath (
     logic [31:0] aluResult, RFData1, RFData2;
     logic [31:0] PCSrcData, PCOutData;
     logic [31:0] immExt, aluSrcMuxOut, RFWDSrcMuxOut;
-    //additional
-    logic [31:0] PC_ADDER_iN;
-    ///
+    logic [31:0] PC_Imm_Adder_Result, PC_4_Adder_Result, PCSrcMuxOut;
+    logic btaken, PCSrcMuxSel;
+    logic [31:0] LUIMuxOut;
+
     assign instrMemAddr = PCOutData;
     assign dataAddr     = aluResult;
     assign dataWData    = RFData2;
+    assign PCSrcMuxSel = btaken & branch;
 
     RegisterFile U_RegFile (
         .clk(clk),
@@ -46,17 +52,31 @@ module DataPath (
         .y  (aluSrcMuxOut)
     );
 
+//change
+    mux_4x1 U_RFWDSrcMux (
+        .sel(RFWDSrcMuxSel),
+        .x0 (aluResult),
+        .x1 (dataRData),
+        .x2 (LUIMuxOut),           //need change (imm <<12)
+        .x3 (PC_Imm_Adder_Result), //need change (PC + imm << 12)
+        .y  (RFWDSrcMuxOut)
+    );
+//change
+
+
+/*
     mux_2x1 U_RFWDSrcMux (
         .sel(RFWDSrcMuxSel),
         .x0 (aluResult),
         .x1 (dataRData),
         .y  (RFWDSrcMuxOut)
     );
-
+*/
     alu U_ALU (
         .aluControl(aluControl),
         .a(RFData1),
         .b(aluSrcMuxOut),
+        .btaken(btaken),
         .result(aluResult)
     );
 
@@ -65,36 +85,49 @@ module DataPath (
         .immExt(immExt)
     );
 
-//additional
-    mux_2x1 U_PC_MUX(
-        .sel(aluResult[0]&instrCode[6]), //instrCode[6]만 B-Type에서 1이므로 B-Type 전용 구축
-        .x0(32'd4), //pc +4를 위함
-        .x1(immExt),
-        .y(PC_ADDER_iN)
-);
-///////
+//additional, LUI용
+    mux_2x1 U_LUIMux (
+        .sel(LUIMuxSel),
+        .x0 (immExt),
+        .x1 ((immExt << 12)),
+        .y  (LUIMuxOut) //PCSrcMuxOut
+    );
+////
+
+    adder U_PC_IMM_adder (
+        .a(LUIMuxOut), //immExt
+        .b(PCOutData),
+        .y(PC_Imm_Adder_Result)
+    );
+
+
+    mux_2x1 U_PCSrcMux (
+        .sel(PCSrcMuxSel),
+        .x0 (PC_4_Adder_Result),
+        .x1 (PC_Imm_Adder_Result),
+        .y  (PCSrcMuxOut)
+    );
 
     register U_PC (
         .clk(clk),
         .reset(reset),
-        .d(PCSrcData),
+        .d(PCSrcMuxOut),
         .q(PCOutData)
     );
 
-    adder U_PC_Adder (
-        .a(PC_ADDER_iN), //32'd4
+    adder U_PC_4_Adder (
+        .a(32'd4),
         .b(PCOutData),
-        .y(PCSrcData)
+        .y(PC_4_Adder_Result)
     );
 
-
 endmodule
-
 
 module alu (
     input  logic [ 3:0] aluControl,
     input  logic [31:0] a,
     input  logic [31:0] b,
+    output logic        btaken,
     output logic [31:0] result
 );
     always_comb begin
@@ -109,21 +142,20 @@ module alu (
             `XOR:    result = a ^ b;
             `OR:     result = a | b;
             `AND:    result = a & b;
-            //additional
-            `BEQ:    if(a == b) result = 32'd1;
-                     else result = 32'd0;
-            `BNE:    if(a != b) result = 32'd1;
-                     else result = 32'd0;
-            `BLT:    if(a < b)  result = 32'd1;
-                     else result = 32'd0;
-            `BGE:    if(a >= b) result = 32'd1;
-                     else result = 32'd0;
-            `BLTU:   if(a < b)  result = 32'd1;
-                     else result = 32'd0;
-            `BGEU:   if(a >= b) result = 32'd1;
-                     else result = 32'd0;
-            ////// 
             default: result = 32'bx;
+        endcase
+    end
+
+    always_comb begin
+        btaken = 1'b0;
+        case(aluControl[2:0])
+            `BEQ  : btaken = (a == b);
+            `BNE  : btaken = (a != b);
+            `BLT  : btaken = ($signed(a) < $signed(b));
+            `BGE  : btaken = ($signed(a) >= $signed(b));
+            `BLTU : btaken = (a < b);
+            `BGEU : btaken = (a >= b);
+            default : btaken = 1'b0;
         endcase
     end
 endmodule
@@ -188,6 +220,27 @@ module mux_2x1 (
     end
 endmodule
 
+//additional
+module mux_4x1 (
+    input  logic [1:0] sel,
+    input  logic [31:0] x0,
+    input  logic [31:0] x1,
+    input  logic [31:0] x2,
+    input  logic [31:0] x3,
+    output logic [31:0] y
+);
+    always_comb begin
+        case (sel)
+            2'b00:    y = x0;
+            2'b01:    y = x1;
+            2'b10:    y = x2;
+            2'b11:    y = x3;
+            default: y = 32'bx;
+        endcase
+    end
+endmodule
+//additional
+
 module extend (
     input  logic [31:0] instrCode,
     output logic [31:0] immExt
@@ -200,28 +253,26 @@ module extend (
         case (opcode)
             `OP_TYPE_R: immExt = 32'bx;
             `OP_TYPE_L: immExt = {{20{instrCode[31]}}, instrCode[31:20]};
-            `OP_TYPE_S: immExt = {{20{instrCode[31]}}, instrCode[31:25], instrCode[11:7]};
-            `OP_TYPE_I: begin
+            `OP_TYPE_S:
+            immExt = {{20{instrCode[31]}}, instrCode[31:25], instrCode[11:7]};
+            `OP_TYPE_I:begin
                 case (func3)
-                    3'b001: immExt = {27'b0, instrCode[24:20]}; //SLLI
-                    3'b101: immExt = {27'b0, instrCode[24:20]}; //SRLI
-                    3'b011: immExt = {20'b0, instrCode[31:20]}; //SRAI
-                    default : immExt = {{20{instrCode[31]}}, instrCode[31:20]};
+                    3'b001: immExt = {27'b0, instrCode[24:20]};
+                    3'b101: immExt = {27'b0, instrCode[24:20]};
+                    3'b011: immExt = {20'b0, instrCode[31:20]};
+                    default: immExt = {{20{instrCode[31]}}, instrCode[31:20]};
                 endcase
             end
-            ///additional
-            `OP_TYPE_B: begin
-                case (func3)
-                    3'b110: immExt = {19'b0, instrCode[31], instrCode[7],
-                     instrCode[30:25], instrCode[11:8], 1'b0}; //unsigned BLTU
-                    3'b111: immExt = {19'b0, instrCode[31], instrCode[7], 
-                     instrCode[30:25], instrCode[11:8], 1'b0}; //unsigned BGEU
-                    default: immExt = {{19{instrCode[31]}}, instrCode[31], instrCode[7],
-                     instrCode[30:25], instrCode[11:8], 1'b0};
-                endcase
-            end
-            ////
+            `OP_TYPE_B:
+            immExt = {{20{instrCode[31]}},
+                            instrCode[7],
+                            instrCode[30:25],
+                            instrCode[11:8],
+                            1'b0
+                            };
             default: immExt = 32'bx;
+            `OP_TYPE_LU: immExt = {{12{instrCode[31]}}, instrCode[31:12]}; 
+            `OP_TYPE_AU: immExt = {{12{instrCode[31]}}, instrCode[31:12]}; 
         endcase
     end
 endmodule

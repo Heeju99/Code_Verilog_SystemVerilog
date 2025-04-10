@@ -9,16 +9,18 @@
 `define OR      4'b0110
 `define AND     4'b0111
 
-//additional
-`define BEQ     4'bx000
-`define BNE     4'bx001
-`define BLT     4'bx100
-`define BGE     4'bx101
-`define BLTU    4'bx110
-`define BGEU    4'bx111
+//B-Type
+`define BEQ     3'b000
+`define BNE     3'b001
+`define BLT     3'b100
+`define BGE     3'b101
+`define BLTU    3'b110
+`define BGEU    3'b111
 
 `define OP_TYPE_R 7'b0110011
 `define OP_TYPE_L 7'b0000011
 `define OP_TYPE_I 7'b0010011
 `define OP_TYPE_S 7'b0100011
 `define OP_TYPE_B 7'b1100011
+`define OP_TYPE_LU 7'b0110111
+`define OP_TYPE_AU 7'b0010111
