@@ -9,11 +9,15 @@ module DataPath (
     input  logic        regFileWe,
     input  logic [ 3:0] aluControl,
     input  logic        aluSrcMuxSel,
-    input  logic [ 1:0] RFWDSrcMuxSel,
+    input  logic [ 2:0] RFWDSrcMuxSel,
     input  logic        branch,
     //additional
     input logic         LUIMuxSel,
+    input logic         FinalMuxSel,
     // 
+    //additional
+    input logic PCAdder_4_MUX_Sel,
+    //
     // instr memory side port
     output logic [31:0] instrMemAddr,
     input  logic [31:0] instrCode,
@@ -25,7 +29,7 @@ module DataPath (
     logic [31:0] aluResult, RFData1, RFData2;
     logic [31:0] PCSrcData, PCOutData;
     logic [31:0] immExt, aluSrcMuxOut, RFWDSrcMuxOut;
-    logic [31:0] PC_Imm_Adder_Result, PC_4_Adder_Result, PCSrcMuxOut;
+    logic [31:0] PC_Imm_Adder_Result, PC_4_Adder_Result, PCSrcMuxOut, PCFinalMuxOut;
     logic btaken, PCSrcMuxSel;
     logic [31:0] LUIMuxOut;
 
@@ -53,6 +57,20 @@ module DataPath (
     );
 
 //change
+    mux_5x1 U_mux_5x1(
+        .sel(RFWDSrcMuxSel),
+        .x0(aluResult),
+        .x1(dataRData),
+        .x2(LUIMuxOut),
+        .x3(PC_Imm_Adder_Result),
+        .x4(PC_4_Adder_Result), //output = PC + 4
+        .y(RFWDSrcMuxOut)
+);
+//change
+
+
+/*
+//change
     mux_4x1 U_RFWDSrcMux (
         .sel(RFWDSrcMuxSel),
         .x0 (aluResult),
@@ -64,7 +82,6 @@ module DataPath (
 //change
 
 
-/*
     mux_2x1 U_RFWDSrcMux (
         .sel(RFWDSrcMuxSel),
         .x0 (aluResult),
@@ -72,6 +89,7 @@ module DataPath (
         .y  (RFWDSrcMuxOut)
     );
 */
+
     alu U_ALU (
         .aluControl(aluControl),
         .a(RFData1),
@@ -102,16 +120,23 @@ module DataPath (
 
 
     mux_2x1 U_PCSrcMux (
-        .sel(PCSrcMuxSel),
+        .sel(PCSrcMuxSel | PCAdder_4_MUX_Sel),
         .x0 (PC_4_Adder_Result),
         .x1 (PC_Imm_Adder_Result),
         .y  (PCSrcMuxOut)
     );
-
+//additional
+    mux_2x1 U_Final_Mux (
+        .sel(FinalMuxSel),
+        .x0 (PCSrcMuxOut),
+        .x1 (aluResult),
+        .y  (PCFinalMuxOut)
+    );
+///
     register U_PC (
         .clk(clk),
         .reset(reset),
-        .d(PCSrcMuxOut),
+        .d(PCFinalMuxOut),
         .q(PCOutData)
     );
 
@@ -241,6 +266,30 @@ module mux_4x1 (
 endmodule
 //additional
 
+//additional
+module mux_5x1 (
+    input  logic [2:0] sel,
+    input  logic [31:0] x0,
+    input  logic [31:0] x1,
+    input  logic [31:0] x2,
+    input  logic [31:0] x3,
+    input  logic [31:0] x4,
+    output logic [31:0] y
+);
+    always_comb begin
+        case (sel)
+            3'b000:    y = x0;
+            3'b001:    y = x1;
+            3'b010:    y = x2;
+            3'b011:    y = x3;
+            3'b100:    y = x4;
+            default: y = 32'bx;
+        endcase
+    end
+endmodule
+
+//
+
 module extend (
     input  logic [31:0] instrCode,
     output logic [31:0] immExt
@@ -273,6 +322,16 @@ module extend (
             default: immExt = 32'bx;
             `OP_TYPE_LU: immExt = {{12{instrCode[31]}}, instrCode[31:12]}; 
             `OP_TYPE_AU: immExt = {{12{instrCode[31]}}, instrCode[31:12]};
+             
+            `OP_TYPE_J :
+             immExt = {{11{instrCode[31]}},
+                            instrCode[31],
+                             instrCode[19:12],
+                             instrCode[20], 
+                             instrCode[30:21],
+                             1'b0
+                             };
+            `OP_TYPE_JL : immExt = {{20{instrCode[31]}}, instrCode[31:20]};
         endcase
     end
 endmodule

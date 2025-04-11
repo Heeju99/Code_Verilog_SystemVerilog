@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-`include "define.sv"
+`include "defines.sv"
 
 module DataPath (
     input  logic        clk,
@@ -9,11 +9,11 @@ module DataPath (
     input  logic        regFileWe,
     input  logic [ 3:0] aluControl,
     input  logic        aluSrcMuxSel,
-    input  logic [ 1:0] RFWDSrcMuxSel,
+    input  logic [ 2:0] RFWDSrcMuxSel,
     input  logic        branch,
-    //additional
-    input logic         LUIMuxSel,
-    // 
+    input  logic        jal,
+    input  logic        jalr,
+
     // instr memory side port
     output logic [31:0] instrMemAddr,
     input  logic [31:0] instrCode,
@@ -25,14 +25,15 @@ module DataPath (
     logic [31:0] aluResult, RFData1, RFData2;
     logic [31:0] PCSrcData, PCOutData;
     logic [31:0] immExt, aluSrcMuxOut, RFWDSrcMuxOut;
-    logic [31:0] PC_Imm_Adder_Result, PC_4_Adder_Result, PCSrcMuxOut;
     logic btaken, PCSrcMuxSel;
-    logic [31:0] LUIMuxOut;
-
+    logic [31:0] PC_Imm_AdderResult, PC_4_AdderResult, PCSrcMuxOut, PC_Imm_Adder_SrcMuxOut;
+    //additional
+    logic [31:0] divideRData;
+    //
     assign instrMemAddr = PCOutData;
     assign dataAddr     = aluResult;
     assign dataWData    = RFData2;
-    assign PCSrcMuxSel = btaken & branch;
+    assign PCSrcMuxSel = jal | (btaken & branch) ;
 
     RegisterFile U_RegFile (
         .clk(clk),
@@ -52,18 +53,23 @@ module DataPath (
         .y  (aluSrcMuxOut)
     );
 
-//change
-    mux_4x1 U_RFWDSrcMux (
+// additional
+    divider U_rdatadivider(
+        .instrCode(instrCode),
+        .dataRData(dataRData),
+        .divideRData(divideRData)
+);
+//additional
+
+    mux_5x1 U_RFWDSrcMux(
         .sel(RFWDSrcMuxSel),
-        .x0 (aluResult),
-        .x1 (dataRData),
-        .x2 (LUIMuxOut),           //need change (imm <<12)
-        .x3 (PC_Imm_Adder_Result), //need change (PC + imm << 12)
-        .y  (RFWDSrcMuxOut)
-    );
-//change
-
-
+        .x0(aluResult),
+        .x1(divideRData), //dataRData
+        .x2(immExt), //이미 Extend 모듈에서 12shift해준 상태
+        .x3(PC_Imm_AdderResult),
+        .x4(PC_4_AdderResult),
+        .y(RFWDSrcMuxOut)
+);
 /*
     mux_2x1 U_RFWDSrcMux (
         .sel(RFWDSrcMuxSel),
@@ -85,26 +91,30 @@ module DataPath (
         .immExt(immExt)
     );
 
-//additional, LUI용
-    mux_2x1 U_LUIMux (
-        .sel(LUIMuxSel),
-        .x0 (immExt),
-        .x1 ((immExt << 12)),
-        .y  (LUIMuxOut) //PCSrcMuxOut
+    mux_2x1 U_PC_Imm_Adder_SrcMux (
+        .sel(jalr),
+        .x0 (PCOutData),
+        .x1 (RFData1),
+        .y  (PC_Imm_Adder_SrcMuxOut)
     );
-////
 
-    adder U_PC_IMM_adder (
-        .a(LUIMuxOut), //immExt
+    adder U_PC_Imm_Adder (
+        .a(immExt),
+        .b(PC_Imm_Adder_SrcMuxOut),
+        .y(PC_Imm_AdderResult)
+    );
+
+    adder U_PC_4_Adder (
+        .a(32'd4),
         .b(PCOutData),
-        .y(PC_Imm_Adder_Result)
+        .y(PC_4_AdderResult)
     );
 
 
     mux_2x1 U_PCSrcMux (
         .sel(PCSrcMuxSel),
-        .x0 (PC_4_Adder_Result),
-        .x1 (PC_Imm_Adder_Result),
+        .x0 (PC_4_AdderResult),
+        .x1 (PC_Imm_AdderResult),
         .y  (PCSrcMuxOut)
     );
 
@@ -115,13 +125,25 @@ module DataPath (
         .q(PCOutData)
     );
 
-    adder U_PC_4_Adder (
-        .a(32'd4),
-        .b(PCOutData),
-        .y(PC_4_Adder_Result)
-    );
 
 endmodule
+
+module divider(
+    input  logic [31:0] instrCode,
+    input  logic [31:0] dataRData,
+    output logic [31:0] divideRData
+);
+    always_comb begin
+        case(instrCode[14:12])         
+            3'b000 : divideRData = {{24{dataRData[7]}} ,dataRData[7:0]};
+            3'b001 : divideRData = {{16{dataRData[15]}} ,dataRData[15:0]};
+            3'b100 : divideRData = {24'b0, dataRData[7:0]};
+            3'b101 : divideRData = {24'b0, dataRData[15:0]};
+            default : divideRData = dataRData;
+        endcase
+    end
+endmodule
+
 
 module alu (
     input  logic [ 3:0] aluControl,
@@ -146,16 +168,16 @@ module alu (
         endcase
     end
 
-    always_comb begin
+    always_comb begin : branch_processor
         btaken = 1'b0;
-        case(aluControl[2:0])
-            `BEQ  : btaken = (a == b);
-            `BNE  : btaken = (a != b);
-            `BLT  : btaken = ($signed(a) < $signed(b));
-            `BGE  : btaken = ($signed(a) >= $signed(b));
-            `BLTU : btaken = (a < b);
-            `BGEU : btaken = (a >= b);
-            default : btaken = 1'b0;
+        case (aluControl[2:0])
+            `BEQ:    btaken = (a == b);
+            `BNE:    btaken = (a != b);
+            `BLT:    btaken = ($signed(a) < $signed(b));
+            `BGE:    btaken = ($signed(a) >= $signed(b));
+            `BLTU:   btaken = (a < b);
+            `BGEU:   btaken = (a >= b);
+            default: btaken = 1'b0;
         endcase
     end
 endmodule
@@ -220,26 +242,27 @@ module mux_2x1 (
     end
 endmodule
 
-//additional
-module mux_4x1 (
-    input  logic [1:0] sel,
+module mux_5x1 (
+    input  logic [ 2:0] sel,
     input  logic [31:0] x0,
     input  logic [31:0] x1,
     input  logic [31:0] x2,
     input  logic [31:0] x3,
+    input  logic [31:0] x4,
     output logic [31:0] y
 );
     always_comb begin
+        y = 32'bx;
         case (sel)
-            2'b00:    y = x0;
-            2'b01:    y = x1;
-            2'b10:    y = x2;
-            2'b11:    y = x3;
-            default: y = 32'bx;
+            3'b000:    y = x0;
+            3'b001:    y = x1;
+            3'b010:    y = x2;
+            3'b011:    y = x3;
+            3'b100:    y = x4;
         endcase
     end
 endmodule
-//additional
+
 
 module extend (
     input  logic [31:0] instrCode,
@@ -255,24 +278,36 @@ module extend (
             `OP_TYPE_L: immExt = {{20{instrCode[31]}}, instrCode[31:20]};
             `OP_TYPE_S:
             immExt = {{20{instrCode[31]}}, instrCode[31:25], instrCode[11:7]};
-            `OP_TYPE_I:begin
+            `OP_TYPE_I: begin
                 case (func3)
-                    3'b001: immExt = {27'b0, instrCode[24:20]};
-                    3'b101: immExt = {27'b0, instrCode[24:20]};
-                    3'b011: immExt = {20'b0, instrCode[31:20]};
+                    3'b001:  immExt = {27'b0, instrCode[24:20]};
+                    3'b101:  immExt = {27'b0, instrCode[24:20]};
+                    3'b011:  immExt = {20'b0, instrCode[31:20]};
                     default: immExt = {{20{instrCode[31]}}, instrCode[31:20]};
                 endcase
             end
             `OP_TYPE_B:
-            immExt = {{20{instrCode[31]}},
-                            instrCode[7],
-                            instrCode[30:25],
-                            instrCode[11:8],
-                            1'b0
-                            };
+            immExt = {
+                {20{instrCode[31]}},
+                instrCode[7],
+                instrCode[30:25],
+                instrCode[11:8],
+                1'b0
+            };
+
+            `OP_TYPE_LU: immExt = {instrCode[31:12], 12'b0}; //뒤에 0을 붙혀 shift 수행
+            `OP_TYPE_AU: immExt = {instrCode[31:12], 12'b0}; //뒤에 0을 붙혀 shift 수행
+
+            `OP_TYPE_J: 
+            immExt = {
+                {12{instrCode[31]}},
+                instrCode[19:12],
+                instrCode[20],
+                instrCode[30:21],
+                1'b0
+            };
+            `OP_TYPE_JL: immExt = {{20{instrCode[31]}}, instrCode[31:20]};
             default: immExt = 32'bx;
-            `OP_TYPE_LU: immExt = {{12{instrCode[31]}}, instrCode[31:12]}; 
-            `OP_TYPE_AU: immExt = {{12{instrCode[31]}}, instrCode[31:12]};
         endcase
     end
 endmodule
