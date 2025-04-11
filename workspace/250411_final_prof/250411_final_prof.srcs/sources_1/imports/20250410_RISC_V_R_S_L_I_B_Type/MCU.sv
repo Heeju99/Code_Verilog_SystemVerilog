@@ -8,7 +8,8 @@ module MCU (
     logic [31:0] instrMemAddr;
     logic        dataWe;
     logic [31:0] dataAddr;
-    logic [31:0] dataWData;
+    //logic [31:0] dataWData;
+    logic [31:0] divideWData;
     logic [31:0] dataRData;
 
     RV32I_Core U_Core (.*);
@@ -22,7 +23,7 @@ module MCU (
         .clk  (clk),
         .we   (dataWe),
         .addr (dataAddr),
-        .wData(dataWData),
+        .wData(divideWData),//dataWData
         .rData(dataRData)
     );
 endmodule

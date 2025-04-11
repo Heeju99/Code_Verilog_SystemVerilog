@@ -18,8 +18,8 @@ module ControlUnit (
         instrCode[30], instrCode[14:12]
     };  // {func7[5], func3}
 
-    logic [4:0] signals;
-    assign {regFileWe, aluSrcMuxSel, dataWe, RFWDSrcMuxSel, branch } = signals;
+    logic [8:0] signals;
+    assign {regFileWe, aluSrcMuxSel, dataWe, RFWDSrcMuxSel, branch, jal, jalr} = signals;
 
     always_comb begin
         signals = 9'b0;

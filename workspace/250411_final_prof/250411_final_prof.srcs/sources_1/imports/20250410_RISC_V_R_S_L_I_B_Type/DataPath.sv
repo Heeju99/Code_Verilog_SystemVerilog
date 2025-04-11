@@ -19,7 +19,10 @@ module DataPath (
     input  logic [31:0] instrCode,
     // data memory side port
     output logic [31:0] dataAddr,
-    output logic [31:0] dataWData,
+    //output logic [31:0] dataWData,
+    //additional
+    output logic [31:0] divideWData,
+    //
     input  logic [31:0] dataRData
 );
     logic [31:0] aluResult, RFData1, RFData2;
@@ -28,7 +31,7 @@ module DataPath (
     logic btaken, PCSrcMuxSel;
     logic [31:0] PC_Imm_AdderResult, PC_4_AdderResult, PCSrcMuxOut, PC_Imm_Adder_SrcMuxOut;
     //additional
-    logic [31:0] divideRData;
+    logic [31:0] divideRData, dataWData;
     //
     assign instrMemAddr = PCOutData;
     assign dataAddr     = aluResult;
@@ -86,6 +89,14 @@ module DataPath (
         .result(aluResult)
     );
 
+// additional
+    divider U_bitdivider(
+        .instrCode(instrCode),
+        .dataRData(dataWData),
+        .divideRData(divideWData)
+);
+//additional
+
     extend U_ImmExtend (
         .instrCode(instrCode),
         .immExt(immExt)
@@ -125,7 +136,6 @@ module DataPath (
         .q(PCOutData)
     );
 
-
 endmodule
 
 module divider(
@@ -134,13 +144,16 @@ module divider(
     output logic [31:0] divideRData
 );
     always_comb begin
-        case(instrCode[14:12])         
-            3'b000 : divideRData = {{24{dataRData[7]}} ,dataRData[7:0]};
-            3'b001 : divideRData = {{16{dataRData[15]}} ,dataRData[15:0]};
-            3'b100 : divideRData = {24'b0, dataRData[7:0]};
-            3'b101 : divideRData = {24'b0, dataRData[15:0]};
-            default : divideRData = dataRData;
+        divideRData = dataRData;
+        if(instrCode[6:0] == 7'b0000011 || instrCode[6:0] == 7'b0100011) begin
+            case(instrCode[14:12])         
+                3'b000 : divideRData = {{24{dataRData[7]}} ,dataRData[7:0]};
+                3'b001 : divideRData = {{16{dataRData[15]}} ,dataRData[15:0]};
+                3'b100 : divideRData = {24'b0, dataRData[7:0]};
+                3'b101 : divideRData = {16'b0, dataRData[15:0]};
+                default : divideRData = dataRData;
         endcase
+        end
     end
 endmodule
 
@@ -214,10 +227,11 @@ module RegisterFile (
 );
     logic [31:0] RegFile[0:2**5-1];
     initial begin
-        for (int i = 0; i < 32; i++) begin
+        for (int i = 0; i < 31; i++) begin
             RegFile[i] = 10 + i;
         end
     end
+    assign RegFile[31] = 32'b1100_0110_0011_1100_0110_0011_1100_0110;
 
     always_ff @(posedge clk) begin
         if (we) RegFile[WAddr] <= WData;
