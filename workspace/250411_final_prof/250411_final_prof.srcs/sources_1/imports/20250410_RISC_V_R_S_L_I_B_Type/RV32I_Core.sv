@@ -19,7 +19,7 @@ module RV32I_Core (
     logic       branch;
     logic       jal;
     logic       jalr;
-
+    //caution
     ControlUnit U_ControlUnit (.*);
     DataPath U_DataPath (.*);
 
