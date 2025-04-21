@@ -4,7 +4,7 @@ module tb_APB_RAM ();
 
     logic clk;
     logic reset;
-    logic [7:0] GPOA;
+    logic [15:0] GPIO;
 
     MCU dut (.*);
 

@@ -46,8 +46,8 @@ module APB_Slave_Intf_GPI (
 
     always_ff @(posedge PCLK, posedge PRESET) begin
         if (PRESET) begin
-            slv_reg0 <= 0;
-            //slv_reg1 <= 0;
+            slv_reg0 <= 0; //moder
+            //slv_reg1 <= 0; //IDR
             //slv_reg2 <= 0;
             //slv_reg3 <= 0;
         end else begin
