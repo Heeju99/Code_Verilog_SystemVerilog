@@ -104,14 +104,17 @@ endclass
 
 class environment;
     mailbox #(transaction) Gen2Drv_mbox;
+    mailbox #(transaction) Mon2Scb_mbox;
     generator fnd_gen;
     driver fnd_drv;
     event gen_next_event;
+    monitor fnd_mon;
 
     function new(virtual APB_Slave_Interface fnd_intf);
         Gen2Drv_mbox = new();
         this.fnd_gen = new(Gen2Drv_mbox, gen_next_event);
         this.fnd_drv = new(fnd_intf, Gen2Drv_mbox, gen_next_event);
+        this.fnd_mon = new(fnd_intf, Mon2Scb_mbox);
     endfunction
     
     task run(int count);
@@ -121,6 +124,55 @@ class environment;
         join_any
     endtask
 endclass
+
+class monitor;
+    virtual APB_Slave_Interface fnd_intf;
+    mailbox #(transaction) Mon2Scb_mbox;
+    function new(mailbox #(transaction) Mon2Scb_mbox, virtual APB_Slave_Interface fnd_intf);
+        this.Mon2Scb_mbox = Mon2Scb_mbox;
+        this.fnd_intf = fnd_intf;
+    endfunction
+
+    task run();
+        transaction fnd_tr;
+            forever begin
+                fnd_tr = new();
+                @(posedge fnd_intf.PCLK); //Setup 구간
+                fnd_tr.PADDR   <= fnd_intf.PADDR; 
+                fnd_tr.PWDATA  <= fnd_intf.PWDATA;
+                fnd_tr.PWRITE  <= fnd_intf.PWRITE;///write 동작 실행
+                fnd_tr.PENABLE <= fnd_intf.PENABLE;
+                fnd_tr.PSEL    <= fnd_intf.PSEL;
+                @(posedge fnd_intf.PCLK); //ACCESS 구간
+                fnd_tr.PADDR   <= fnd_intf.PADDR; 
+                fnd_tr.PWDATA  <= fnd_intf.PWDATA;
+                fnd_tr.PWRITE  <= fnd_intf.PWRITE; 
+                fnd_tr.PENABLE <= fnd_intf.PENABLE;
+                fnd_tr.PSEL    <= fnd_intf.PSEL;
+                wait(fnd_intf.PREADY == 1'b1);
+                @(posedge fnd_intf.PCLK);
+                @(posedge fnd_intf.PCLK);
+                fnd_tr.display("DRV");
+                Mon2Scb_mbox.put(fnd_tr);
+            end
+    endtask
+endclass
+
+class scoreboard;
+    mailbox #(transaction) Mon2Scb_mbox;
+
+    function new(mailbox #(transaction) Mon2Scb_mbox);
+        this.Mon2Scb_mbox = Mon2Scb_mbox;
+    endfunction
+
+    task run ();
+        transaction fnd_tr;
+        forever begin
+            fnd_tr.get(Mon2Scb_mbox);
+        end
+    endtask //automatic
+endclass
+
 
 module tb_FndController_APB();
 
