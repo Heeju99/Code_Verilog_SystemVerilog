@@ -14,13 +14,15 @@ module FND_Periph (
     output logic        PREADY,
     // export signals
     output logic [ 3:0] fndComm,
-    output logic [ 7:0] fndFont
+    output logic [ 7:0] fndFont,
+    //additional
+    output logic [1:0] digit_sel
 );
 
     logic       fcr_en;
     logic [13:0] fdr;
     logic [3:0]  fpr;
-
+     
     APB_SlaveIntf_FND U_APB_Intf_FND (.*);
     FND U_FND_IP (.*);
 endmodule
@@ -88,12 +90,14 @@ module FND (
     input  logic [13:0] fdr,
     input  logic [3:0] fpr,
     output logic [3:0] fndComm,
-    output logic [7:0] fndFont
+    output logic [7:0] fndFont,
+    output logic [1:0] digit_sel
 );
 
     logic [3:0] digit_1, digit_10, digit_100, digit_1000;
     logic [3:0] o_fdr;
-    logic [1:0] digit_sel, o_tick;
+    logic [1:0] o_tick;
+    //logic [1:0] digit_sel;
     logic fndDp;
     logic [6:0] fndSegData;
 
