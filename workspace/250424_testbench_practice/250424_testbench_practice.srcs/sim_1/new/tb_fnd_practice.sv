@@ -171,6 +171,7 @@ class scoreboard;
     logic [6:0] pass_cnt;
     logic [6:0] fail_cnt;
     logic [6:0] total_cnt;
+    logic [3:0] digit[3:0];
 
     function new(mailbox #(transaction) Mon2SCB_mbox,event gen_next_event);
         this.Mon2SCB_mbox = Mon2SCB_mbox;
@@ -190,10 +191,10 @@ class scoreboard;
 
             if (fnd_tr.PWRITE) begin // write mode
                 refFndReg[fnd_tr.PADDR[3:2]] = fnd_tr.PWDATA;
-                int digit[0] = refFndReg[1] % 10;
-                int digit[1] = refFndReg[1] /10 % 10;
-                int digit[2] = refFndReg[1] /100 % 10;
-                int digit[3] = refFndReg[1] /1000 % 10;
+                    digit[0] = refFndReg[1] % 10;
+                    digit[1] = refFndReg[1] /10 % 10;
+                    digit[2] = refFndReg[1] /100 % 10;
+                    digit[3] = refFndReg[1] /1000 % 10;
                 // fpr check
                     if (refFndReg[2][digit[fnd_tr.digit_sel]] == ~fnd_tr.fndFont[7])
                         $display("FND DP PASS %h, %h", refFndReg[2][digit[fnd_tr.digit_sel]], ~fnd_tr.fndFont[7]);
