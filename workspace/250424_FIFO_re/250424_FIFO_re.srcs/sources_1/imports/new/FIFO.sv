@@ -14,6 +14,7 @@ module FIFO(
     );
 
     logic [1:0] wr_ptr, rd_ptr;
+    
     RAM U_RAM(
         .clk(clk),
         .wdata(wdata),
