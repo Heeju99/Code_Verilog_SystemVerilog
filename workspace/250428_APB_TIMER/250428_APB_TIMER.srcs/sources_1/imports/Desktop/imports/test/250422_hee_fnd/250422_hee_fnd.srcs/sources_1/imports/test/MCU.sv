@@ -8,9 +8,8 @@ module MCU (
     inout  logic [7:0] GPIOC,
     inout  logic [7:0] GPIOD,
     output logic [3:0] fndComm,  
-    output logic [7:0] fndFont,
-    output logic       trigger,
-    input  logic       echo
+    output logic [7:0] fndFont
+    
 );
     // global signals
     logic        PCLK;
@@ -28,7 +27,9 @@ module MCU (
     logic        PSEL_GPIOC;
     logic        PSEL_GPIOD;
     logic        PSEL_GPOE;
-    logic        PSEL_SENSOR;
+    logic        PSEL_FIFO;
+    logic        PSEL_TIMER;
+    
 
     logic [31:0] PRDATA_RAM;
     logic [31:0] PRDATA_GPO;
@@ -36,7 +37,8 @@ module MCU (
     logic [31:0] PRDATA_GPIOC;
     logic [31:0] PRDATA_GPIOD;
     logic [31:0] PRDATA_GPOE;
-    logic [31:0] PRDATA_SENSOR;
+    logic [31:0] PRDATA_FIFO;
+    logic [31:0] PRDATA_TIMER;
     
     logic        PREADY_RAM;
     logic        PREADY_GPO;
@@ -44,7 +46,9 @@ module MCU (
     logic        PREADY_GPIOC;
     logic        PREADY_GPIOD;
     logic        PREADY_GPOE;
-    logic        PREADY_SENSOR;
+    logic        PREADY_FIFO;
+    logic        PREADY_TIMER;
+    
 
     // CPU - APB_Master Signals
     // Internal Interface Signals
@@ -62,6 +66,8 @@ module MCU (
     // ROM Signals
     logic [31:0] instrCode;
     logic [31:0] instrMemAddr;
+
+    logic read_ready;
 
     assign PCLK = clk;
     assign PRESET = reset;
@@ -85,7 +91,9 @@ module MCU (
         .PSEL3  (PSEL_GPIOC),
         .PSEL4  (PSEL_GPIOD),
         .PSEL5  (PSEL_GPOE),
-        .PSEL6  (PSEL_SENSOR),
+        .PSEL6  (PSEL_FIFO),
+        .PSEL7  (PSEL_TIMER),
+        
 
         .PRDATA0(PRDATA_RAM),
         .PRDATA1(PRDATA_GPO),
@@ -93,7 +101,8 @@ module MCU (
         .PRDATA3(PRDATA_GPIOC),
         .PRDATA4(PRDATA_GPIOD),
         .PRDATA5(PRDATA_GPOE),
-        .PRDATA6(PRDATA_SENSOR),
+        .PRDATA6(PRDATA_FIFO),
+        .PRDATA7(PRDATA_TIMER),
 
         .PREADY0(PREADY_RAM),
         .PREADY1(PREADY_GPO),
@@ -101,7 +110,8 @@ module MCU (
         .PREADY3(PREADY_GPIOC),
         .PREADY4(PREADY_GPIOD),
         .PREADY5(PREADY_GPOE),
-        .PREADY6(PREADY_SENSOR)
+        .PREADY6(PREADY_FIFO),
+        .PREADY7(PREADY_TIMER)
         
     );
 
@@ -157,15 +167,19 @@ module MCU (
         .fndComm(fndComm),
         .fndFont(fndFont)
     );
-
-    ultrasonic_periph U_Ultrasonic_Periph(
+    FIFO_Periph U_FIFO_Peri(
         .*,
-        .PSEL(PSEL_SENSOR),
-        .PRDATA(PRDATA_SENSOR),
-        .PREADY(PREADY_SENSOR),
-        // export signals
-        //output logic [ 8:0] dist,
-        .trigger(trigger),
-        .echo(echo)
+        .PSEL(PSEL_FIFO),
+        .PRDATA(PRDATA_FIFO),
+        .PREADY(), //nc
+    // inport signals
+        .real_ready(PREADY_FIFO)
+);
+
+    Timer_Periph U_TIMER_Peri(
+        .*,
+        .PSEL(PSEL_TIMER),
+        .PRDATA(PRDATA_TIMER),
+        .PREADY(PREADY_TIMER)
 );
 endmodule
