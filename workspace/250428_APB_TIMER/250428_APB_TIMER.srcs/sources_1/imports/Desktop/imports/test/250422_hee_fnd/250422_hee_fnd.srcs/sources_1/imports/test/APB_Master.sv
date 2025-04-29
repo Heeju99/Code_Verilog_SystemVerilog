@@ -169,7 +169,7 @@ endmodule
 module APB_Decoder (
     input  logic        en,
     input  logic [31:0] sel,
-    output logic [ 8:0] y
+    output logic [ 7:0] y
 );
     always_comb begin
         y = 8'b0;

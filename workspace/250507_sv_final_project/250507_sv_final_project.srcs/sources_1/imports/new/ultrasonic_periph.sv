@@ -17,7 +17,7 @@ module ultrasonic_periph(
     output logic        trigger,
     input  logic        echo
 );
-
+////
     logic       fcr_en;
     logic [8:0] distance;
     logic       echo_done;
@@ -44,10 +44,11 @@ module APB_SlaveIntf_sensor (
     //additional
     input  logic        echo_done
 );
-    logic [31:0] slv_reg0, slv_reg1;//, slv_reg2, slv_reg3;
+    logic [31:0] slv_reg0, slv_reg1, slv_reg2;//, slv_reg3;
 
     assign fcr_en = slv_reg0[0];   // 출력 여부 사용 (1: 사용 , 0: 비활성화)
     assign slv_reg1[8:0] = distance;
+    assign slv_reg2[0] = echo_done;
 
     always_ff @(posedge PCLK, posedge PRESET) begin
         if (PRESET) begin
@@ -62,7 +63,7 @@ module APB_SlaveIntf_sensor (
                         case (PADDR[3:2])
                             2'd0: slv_reg0 <= PWDATA;   //fcr_en
                             2'd1: ;                     //dist
-                            //2'd2: slv_reg2 <= PWDATA; 
+                            2'd2: ;                     //echo_done
                             // 2'd3: slv_reg3 <= PWDATA;
                         endcase
                 end else begin
@@ -70,7 +71,7 @@ module APB_SlaveIntf_sensor (
                         case (PADDR[3:2])
                             2'd0: PRDATA <= slv_reg0;  //fcr_en
                             2'd1: PRDATA <= slv_reg1;  //dist
-                            //2'd2: PRDATA <= slv_reg2;  
+                            2'd2: PRDATA <= slv_reg2;  
                             // 2'd3: PRDATA <= slv_reg3;
                         endcase
                     end
@@ -114,7 +115,7 @@ module sensor_dp(
     assign echo_done = echo_done_reg;
     assign trigger = trigger_reg;
     assign distance = dist_reg;
-    always@(posedge PCLK, posedge PRESET)
+    always_ff@(posedge PCLK, posedge PRESET)
         begin
             if(PRESET) begin
                 state <= 0;
@@ -136,7 +137,7 @@ module sensor_dp(
             end
         end
 
-    always@(*)begin
+    always_comb begin
         next = state;
         trigger_next = trigger_reg;
         trigger_1us_next = trigger_1us_reg;
@@ -161,7 +162,6 @@ module sensor_dp(
                          
                             next = HIGH_COUNT;
                        
-                            //next = HIGH_COUNT;
                         end else begin
                             trigger_next = 1;
                             tick_count_next = tick_count_reg + 1;
@@ -210,7 +210,7 @@ module clk_div_100(
 
     assign o_tick = tick_reg; // 최종 출력. 
 
-    always @(posedge clk, posedge reset) begin
+    always_ff @(posedge clk, posedge reset) begin
         if(reset) begin
             count_reg <= 0;
             tick_reg <= 0;
@@ -220,7 +220,7 @@ module clk_div_100(
         end
     end
 
-    always @(*) begin
+    always_comb begin
         count_next = count_reg;
         tick_next = 1'b0; // clk_reg;
             if(count_reg == (FCOUNT - 1)) begin

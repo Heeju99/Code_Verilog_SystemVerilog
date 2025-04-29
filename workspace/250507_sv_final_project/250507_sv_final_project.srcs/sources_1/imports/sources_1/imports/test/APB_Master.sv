@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
-       
+//       
 module APB_Master (
-    // global signal
+    // global signal////
     input  logic        PCLK,
     input  logic        PRESET,
     // APB Interface Signals
@@ -15,7 +15,7 @@ module APB_Master (
     output logic        PSEL1,
     output logic        PSEL2,
     output logic        PSEL3,
-    output logic        PSEL4,
+    output logic        PSEL4,  
     output logic        PSEL5,
     output logic        PSEL6,
     
