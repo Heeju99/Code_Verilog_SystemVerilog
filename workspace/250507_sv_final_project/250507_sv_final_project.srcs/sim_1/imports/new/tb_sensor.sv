@@ -305,7 +305,7 @@ class envirnment;
     endtask  //run
 endclass  //envirnment
 
-module tb_FNDcontroller ();
+module tb_Sensor();
 
     envirnment fnd_env;
     APB_Slave_Interface fnd_intf(); // interface는 new를 만들어주지 않음
