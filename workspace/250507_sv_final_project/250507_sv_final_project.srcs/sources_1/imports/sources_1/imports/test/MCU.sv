@@ -164,7 +164,6 @@ module MCU (
         .PRDATA(PRDATA_SENSOR),
         .PREADY(PREADY_SENSOR),
         // export signals
-        //output logic [ 8:0] dist,
         .trigger(trigger),
         .echo(echo)
 );

@@ -1,41 +1,5 @@
 `timescale 1ns / 1ps
 
-class transaction;
-    rand logic [ 3:0] PADDR;
-    rand logic [31:0] PWDATA;
-    rand bit          PWRITE;
-    rand logic        PENABLE;
-    rand logic        PSEL;
-    logic      [31:0] PRDATA;
-    logic             PREADY;
-    // export signals
-
-    logic        trigger;
-    logic        echo;
-    //logic      [ 3:0] fndComm;
-    //logic      [ 7:0] fndFont;
-    //logic      [ 1:0] digit_sel;
-
-    constraint c_paddr {PADDR inside {4'h0, 4'h4, 4'h8};}
-    constraint c_waddr {PWDATA < 400;}
-    constraint c_paddr_0 {
-        if (PADDR == 0)
-        PWDATA inside {1'b0, 1'b1};
-        else
-        if (PADDR == 4)
-        PWDATA < 10000;
-        else
-        if (PADDR == 8) PWDATA inside {1'b0, 1'b1};
-    }
-
-    task display(string name);
-        $display(
-            "[%s] PADDR=%h, PWDATA=%h, PENABLE=%h, PSEL=%h, PRDATA=%h, PREADY=%h, trigger=%h, echo=%h",
-            name, PADDR, PWDATA, PWRITE, PENABLE, PSEL, PRDATA, PREADY,
-            trigger, echo);
-    endtask  //display
-endclass  //transaction
-
 interface APB_Slave_Interface;
     logic        PCLK;
     logic        PRESET;
@@ -48,15 +12,52 @@ interface APB_Slave_Interface;
     logic [31:0] PRDATA;
     logic        PREADY;
     // export signals
-    logic [ 3:0] fndComm;
-    logic [ 7:0] fndFont;
-    logic [ 1:0] digit_sel;
+    logic        trigger;
+    logic        echo;
+    //additional
+    logic  [8:0] distance;
+    logic  [16:0] rand_distance;
 
-endinterface  //APB_Slave_Interface
+endinterface 
+
+
+
+class transaction;
+    rand logic [ 3:0] PADDR;
+    rand logic [31:0] PWDATA;
+    rand logic          PWRITE;
+    rand logic        PENABLE;
+    rand logic        PSEL;
+    logic      [31:0] PRDATA;
+    logic             PREADY;
+    // export signals
+
+    logic        trigger;
+    logic        echo;
+    //additional
+    logic  [8:0] distance;
+    rand logic  [16:0] rand_distance;
+
+    constraint c_paddr {PADDR inside {4'h0, 4'h4};}
+    constraint c_dist {23500 < rand_distance < 100000;}
+    constraint c_paddr_0 {
+        if (PADDR == 0)
+        PWDATA inside {1'b0, 1'b1};
+    }
+
+    task display(string name);
+        $display(
+            "[%s] PADDR=%h, PWDATA=%h, PWRITE=%h ,PENABLE=%h, PSEL=%h, PRDATA=%h, PREADY=%h, trigger=%h, echo=%h, distance=%h, rand_distance=%d",
+            name, PADDR, PWDATA, PWRITE, PENABLE, PSEL, PRDATA, PREADY,
+            trigger, echo, distance, rand_distance);
+    endtask  //display
+endclass  //transaction
+
 
 class generator;
     mailbox #(transaction) Gen2Drv_mbox;
     event gen_next_event;
+    
 
     function new(mailbox#(transaction) Gen2Drv_mbox, event gen_next_event);
         this.Gen2Drv_mbox   = Gen2Drv_mbox;
@@ -64,193 +65,173 @@ class generator;
     endfunction  //new()
 
     task run(int repeat_counter);
-        transaction fnd_tr;
+        transaction sen_tr;
         repeat (repeat_counter) begin
-            fnd_tr = new(); 
-            if (!fnd_tr.randomize())
+            sen_tr = new(); 
+            if (!sen_tr.randomize())
                 $error("Randomization fail");  
-            fnd_tr.display("GEN");  
-            Gen2Drv_mbox.put(fnd_tr); 
+            sen_tr.display("GEN");  
+            Gen2Drv_mbox.put(sen_tr); 
             @(gen_next_event); 
         end
     endtask  //run
 endclass  //generater
 
 class driver;
-    virtual APB_Slave_Interface fnd_intf;
+    virtual APB_Slave_Interface sen_intf;
     mailbox #(transaction) Gen2Drv_mbox;
-    transaction fnd_tr;
+    transaction sen_tr;
+    event drv_next_event;
 
-    function new(virtual APB_Slave_Interface fnd_intf,
-                 mailbox#(transaction) Gen2Drv_mbox);
-        this.fnd_intf = fnd_intf;
+    function new(virtual APB_Slave_Interface sen_intf,
+                 mailbox#(transaction) Gen2Drv_mbox,
+                 event drv_next_event);
+        this.sen_intf = sen_intf;
         this.Gen2Drv_mbox = Gen2Drv_mbox;
+        this.drv_next_event = drv_next_event;
     endfunction  //new()
 
     task run();
         forever begin
-            Gen2Drv_mbox.get(fnd_tr);
-            fnd_tr.display("DRV");
-            @(posedge fnd_intf.PCLK);
-            fnd_intf.PADDR <= fnd_tr.PADDR;
-            fnd_intf.PWDATA <= fnd_tr.PWDATA;
-            fnd_intf.PWRITE <= fnd_tr.PWRITE;
-            fnd_intf.PENABLE <= 1'b0;
-            fnd_intf.PSEL <= 1'b1;
-            @(posedge fnd_intf.PCLK);
-            fnd_intf.PADDR <= fnd_tr.PADDR;
-            fnd_intf.PWDATA <= fnd_tr.PWDATA;
-            fnd_intf.PWRITE <= fnd_tr.PWRITE;
-            fnd_intf.PENABLE <= 1'b1;
-            fnd_intf.PSEL <= 1'b1;
-            wait (fnd_intf.PREADY == 1'b1);
-            @(posedge fnd_intf.PCLK);
-            @(posedge fnd_intf.PCLK);
-            @(posedge fnd_intf.PCLK);
+            Gen2Drv_mbox.get(sen_tr);
+            sen_tr.display("DRV");
+            @(posedge sen_intf.PCLK);
+            sen_intf.PADDR <= sen_tr.PADDR;
+            sen_intf.PWDATA <= sen_tr.PWDATA;
+            sen_intf.PWRITE <= sen_tr.PWRITE;
+            sen_intf.PENABLE <= 1'b0;
+            sen_intf.PSEL <= 1'b1;
+            @(posedge sen_intf.PCLK);
+            sen_intf.PADDR <= sen_tr.PADDR;
+            sen_intf.PWDATA <= sen_tr.PWDATA;
+            sen_intf.PWRITE <= sen_tr.PWRITE;
+            sen_intf.PENABLE <= 1'b1;
+            sen_intf.PSEL <= 1'b1;
+            sen_intf.rand_distance <= sen_tr.rand_distance;
+            sen_intf.distance <= sen_tr.distance;
+            wait (sen_intf.PREADY == 1'b1);
+            @(posedge sen_intf.PCLK);
+            @(posedge sen_intf.PCLK);
+        
+            if (sen_tr.PADDR == 0 && sen_tr.PWDATA == 1) begin
+                sen_intf.trigger <= 1;
+                #10700; //10tick
+                sen_intf.trigger <= 0;
+
+                sen_intf.echo <= 1;
+                #(sen_tr.rand_distance * 58);  
+                sen_intf.echo <= 0;
+            end
+            ->drv_next_event;
         end
     endtask  //run
 endclass  //dirver
 
 class monitor;
     mailbox #(transaction) Mon2SCB_mbox;
-    virtual APB_Slave_Interface fnd_intf;
-    transaction fnd_tr;
+    virtual APB_Slave_Interface sen_intf;
+    transaction sen_tr;
+    event drv_next_event;
 
-    function new(virtual APB_Slave_Interface fnd_intf,
-                 mailbox#(transaction) Mon2SCB_mbox);
-        this.fnd_intf = fnd_intf;
+    function new(virtual APB_Slave_Interface sen_intf,
+                 mailbox#(transaction) Mon2SCB_mbox,
+                 event drv_next_event);
+        this.sen_intf = sen_intf;
         this.Mon2SCB_mbox = Mon2SCB_mbox;
+        this.drv_next_event = drv_next_event;
     endfunction  //new()
 
     task run();
         forever begin
-            fnd_tr = new();
-            @(posedge fnd_intf.PREADY);
+            sen_tr = new();
+            @(drv_next_event);
             #1;
-            fnd_tr.PADDR   = fnd_intf.PADDR;
-            fnd_tr.PWDATA  = fnd_intf.PWDATA;
-            fnd_tr.PWRITE  = fnd_intf.PWRITE;
-            fnd_tr.PENABLE = fnd_intf.PENABLE;
-            fnd_tr.PSEL    = fnd_intf.PSEL;
-            fnd_tr.PRDATA  = fnd_intf.PRDATA;
-            fnd_tr.PREADY  = fnd_intf.PREADY;
-            fnd_tr.fndComm = fnd_intf.fndComm;
-            fnd_tr.fndFont = fnd_intf.fndFont;
-            fnd_tr.digit_sel     = fnd_intf.digit_sel;
-            Mon2SCB_mbox.put(fnd_tr);
-            fnd_tr.display("MON");
-            @(posedge fnd_intf.PCLK);
+            sen_tr.PADDR   = sen_intf.PADDR;
+            sen_tr.PWDATA  = sen_intf.PWDATA;
+            sen_tr.PWRITE  = sen_intf.PWRITE;
+            sen_tr.PENABLE = sen_intf.PENABLE;
+            sen_tr.PSEL    = sen_intf.PSEL;
+            sen_tr.PRDATA  = sen_intf.PRDATA;
+            sen_tr.PREADY  = sen_intf.PREADY;
+            //additional
+            sen_tr.trigger  = sen_intf.trigger;
+            sen_tr.echo     = sen_intf.echo;
+            sen_tr.distance = sen_intf.distance;
+            sen_tr.rand_distance = sen_intf.rand_distance;
+            Mon2SCB_mbox.put(sen_tr);
+            sen_tr.display("MON");
+            @(posedge sen_intf.PCLK);
         end
     endtask  //run
 endclass  //monitor
 
 class scoreboard;
     mailbox #(transaction) Mon2SCB_mbox;
-    transaction fnd_tr;
+    transaction sen_tr;
     event gen_next_event;
 
     // reference model
-    logic [3:0] digit[3:0];
-    logic [31:0] refFndReg[0:2];
-    logic [7:0] refFndFont[0:15] = '{
-        8'hC0,
-        8'hF9,
-        8'hA4,
-        8'hB0,
-        8'h99,
-        8'h92,
-        8'h82,
-        8'hF8,
-        8'h80,
-        8'h90,
-        8'h88,
-        8'h83,
-        8'hC6,
-        8'hA1,
-        8'h86,
-        8'h8E
-    };
-    logic [9:0] write_cnt = 0; //to count
-    logic [9:0] read_cnt = 0;
+    logic [31:0] refSenReg[0:2];
+    logic [ 8:0] refDist;
+
+    //to count
+    logic [9:0] write_cnt = 0;
     logic [9:0] pass_cnt = 0;
     logic [9:0] fail_cnt = 0;
     logic [9:0] total_cnt = 0;
+    logic [9:0] read_cnt = 0;
 
-    logic font_pass;
+    logic detect_pass;
     logic enable_pass;
-    logic read_pass;
 
     function new(mailbox#(transaction) Mon2SCB_mbox, event gen_next_event);
         this.Mon2SCB_mbox   = Mon2SCB_mbox;
         this.gen_next_event = gen_next_event;
         for (int i = 0; i < 3; i++) begin
-            refFndReg[i] = 0;
+            refSenReg[i] = 0;
         end
     endfunction  //new()
 
     task run();
-        font_pass   = 0;
+        detect_pass = 0;
         enable_pass = 0;
-        read_pass   = 0;
         forever begin
-            Mon2SCB_mbox.get(fnd_tr);
-            fnd_tr.display("SCB");
-            if (fnd_tr.PWRITE) begin  // write mode
-                refFndReg[fnd_tr.PADDR[3:2]] = fnd_tr.PWDATA;
-                //reference register updata
-                digit[0] = refFndReg[1] % 10;
-                digit[1] = (refFndReg[1] / 10) % 10;
-                digit[2] = (refFndReg[1] / 100) % 10;
-                digit[3] = (refFndReg[1] / 1000) % 10;
-
-                write_cnt = write_cnt + 1; //write mode count
-                //fdr check
-                if ({~refFndReg[2][fnd_tr.digit_sel],refFndFont[digit[fnd_tr.digit_sel]][6:0]} == fnd_tr.fndFont) begin
-                    $display("FND Font PASS, %h, %h", {
-                             ~refFndReg[2][fnd_tr.digit_sel],
-                             refFndFont[digit[fnd_tr.digit_sel]][6:0]},
-                             fnd_tr.fndFont);
-                    font_pass = 1;
-                end else begin
-                    $display("FND Font FAIL, %h, %h", {
-                             ~refFndReg[2][fnd_tr.digit_sel],
-                             refFndFont[digit[fnd_tr.digit_sel]][6:0]},
-                             fnd_tr.fndFont);
-                    font_pass = 0;
-                end
-
-                //fcr_en
-                if (refFndReg[0] == 0) begin  //en == 0
-                    if (4'hf == fnd_tr.fndComm) begin
-                        $display("FND EnableComport PASS");
+            Mon2SCB_mbox.get(sen_tr);
+            sen_tr.display("SCB");
+            if (sen_tr.PWRITE) begin  // write mode
+                refSenReg[0] = sen_tr.PWDATA;
+                refSenReg[1] = sen_tr.distance;
+                write_cnt = write_cnt + 1;  //write mode count
+                
+                //enable check  
+                if(sen_tr.PADDR[3:2] == 0 & sen_tr.PWDATA == 1) begin //FCN_EN ==  1
+                    //if(sen_tr.trigger == refSenReg[0]) begin // dangerous
+                    if(sen_tr.rand_distance == refSenReg[1]) begin
+                        $display("SENSOR EnableComport PASS");
                         enable_pass = 1;
                     end else begin
-                        $display("FND Enable FAIL");
+                        $display("SENSOR EnableComport FAIL");
                         enable_pass = 0;
                     end
-                //fndComm enable
-                //enable signal이 fndcomm에 가하는 effect
-                end else begin  // en == 1;
-                    if (4'b1 << fnd_tr.digit_sel == ~fnd_tr.fndComm[3:0])
-                        $display("FND Comport PASS, %h, %h", 4'b1 << fnd_tr.digit_sel, ~fnd_tr.fndComm[3:0]);
-                    else
-                        $display("FND Comport FAIL, %h, %h", 4'b1 << fnd_tr.digit_sel, ~fnd_tr.fndComm[3:0]);
-                end
-            end else begin  // read mode
-                if (refFndReg[fnd_tr.PADDR[3:2]] == fnd_tr.PRDATA) begin
-                    $display("FND Read PASS, %h, %h", refFndReg[fnd_tr.PADDR[3:2]], fnd_tr.PRDATA);
+                end 
+            end else begin // readmode
+                if(sen_tr.PADDR[3:2] == 1 & sen_tr.PWRITE == 0) begin
+                    refDist = sen_tr.distance;
 
-                    read_pass = 1; //to count
-                end else begin
-                    $display("FND Read FAIL, %h, %h", refFndReg[fnd_tr.PADDR[3:2]], fnd_tr.PRDATA);
-                    read_pass = 0; //to count
+                    if(refDist == (sen_tr.rand_distance)/58) begin
+                        $display("SENSOR Detect PASS");
+                        detect_pass = 1;
+                    end else begin
+                        $display("SENSOR Detect FAIL");
+                        detect_pass = 0;
+                    end
                 end
-                read_cnt = read_cnt + 1; //read count
+                read_cnt = read_cnt + 1;
             end
             ->gen_next_event; //send "done" to Gen
 
             //calculate score + display
-            if ((font_pass == 1 & enable_pass == 1) | read_pass == 1) begin
+            if (detect_pass == 1 | enable_pass == 1) begin
                 pass_cnt = pass_cnt + 1;
             end else begin
                 fail_cnt = fail_cnt + 1;
@@ -279,63 +260,65 @@ class envirnment;
     
     mailbox #(transaction) Gen2Drv_mbox;
     mailbox #(transaction) Mon2SCB_mbox;
-    generator              fnd_gen;
-    driver                 fnd_drv;
-    monitor                fnd_mon;
-    scoreboard             fnd_scb;
+    generator              sen_gen;
+    driver                 sen_drv;
+    monitor                sen_mon;
+    scoreboard             sen_scb;
     event                  gen_next_event;
+    event                  drv_next_event;
 
-    function new(virtual APB_Slave_Interface fnd_intf);
+    function new(virtual APB_Slave_Interface sen_intf);
         this.Gen2Drv_mbox = new();
         this.Mon2SCB_mbox = new();
-        this.fnd_gen = new(Gen2Drv_mbox, gen_next_event);
-        this.fnd_drv = new(fnd_intf, Gen2Drv_mbox);
-        this.fnd_mon = new(fnd_intf, Mon2SCB_mbox);
-        this.fnd_scb = new(Mon2SCB_mbox, gen_next_event);
+        this.sen_gen = new(Gen2Drv_mbox, gen_next_event);
+        this.sen_drv = new(sen_intf, Gen2Drv_mbox, drv_next_event);
+        this.sen_mon = new(sen_intf, Mon2SCB_mbox, drv_next_event);
+        this.sen_scb = new(Mon2SCB_mbox, gen_next_event);
     endfunction
 
     task run(int count);
         fork
-            fnd_gen.run(count);
-            fnd_drv.run();
-            fnd_mon.run();
-            fnd_scb.run();
+            sen_gen.run(count);
+            sen_drv.run();
+            sen_mon.run();
+            sen_scb.run();
         join_any
-            fnd_scb.report();
+            sen_scb.report();
     endtask  //run
 endclass  //envirnment
 
 module tb_Sensor();
 
-    envirnment fnd_env;
-    APB_Slave_Interface fnd_intf(); // interface는 new를 만들어주지 않음
+    envirnment sen_env;
+    APB_Slave_Interface sen_intf(); // interface는 new를 만들어주지 않음
 
-    always #5 fnd_intf.PCLK = ~fnd_intf.PCLK;
+    always #5 sen_intf.PCLK = ~sen_intf.PCLK;
 
     ultrasonic_periph dut (
         // global signal
-        .PCLK  (fnd_intf.PCLK),
-        .PRESET(fnd_intf.PRESET),
+        .PCLK  (sen_intf.PCLK),
+        .PRESET(sen_intf.PRESET),
 
-        .PADDR  (fnd_intf.PADDR),
-        .PWDATA (fnd_intf.PWDATA),
-        .PWRITE (fnd_intf.PWRITE),
-        .PENABLE(fnd_intf.PENABLE),
+        .PADDR  (sen_intf.PADDR),
+        .PWDATA (sen_intf.PWDATA),
+        .PWRITE (sen_intf.PWRITE),
+        .PENABLE(sen_intf.PENABLE),
 
-        .PSEL(fnd_intf.PSEL),
-        .PRDATA(fnd_intf.PRDATA),
-        .PREADY(fnd_intf.PREADY),
-        // inport signals
-        .trigger(fnd_intf.trigger),
-        .echo(fnd_intf.echo)
+        .PSEL(sen_intf.PSEL),
+        .PRDATA(sen_intf.PRDATA),
+        .PREADY(sen_intf.PREADY),
+        // signals
+        .trigger(sen_intf.trigger),
+        .echo(sen_intf.echo),
+        .distance(sen_intf.distance)
     );
 
     initial begin
-        fnd_intf.PCLK   = 0;
-        fnd_intf.PRESET = 1;
-        #10 fnd_intf.PRESET = 0;
-        fnd_env = new(fnd_intf);  // envirnment instance 생성
-        fnd_env.run(1000);  // 10번 시도
+        sen_intf.PCLK   = 0;
+        sen_intf.PRESET = 1;
+        #10 sen_intf.PRESET = 0;
+        sen_env = new(sen_intf); 
+        sen_env.run(100);  
         #30;
         $display("finished");
         $finish;

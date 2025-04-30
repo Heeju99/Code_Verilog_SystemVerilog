@@ -12,15 +12,16 @@ module ultrasonic_periph(
     input  logic        PSEL,
     output logic [31:0] PRDATA,
     output logic        PREADY,
+
     // export signals
-    //output logic [ 8:0] dist,
     output logic        trigger,
-    input  logic        echo
+    input  logic        echo,
+    //additional
+    output logic  [8:0] distance
 );
-////
-    logic       fcr_en;
-    logic [8:0] distance;
-    logic       echo_done;
+    logic        fcr_en;
+    //logic  [8:0] distance;
+    logic        echo_done;
 
     APB_SlaveIntf_sensor U_APB_Intf_sensor (.*);
     sensor_dp U_sensor_IP (.*);
@@ -167,9 +168,6 @@ module sensor_dp(
                             tick_count_next = tick_count_reg + 1;
                         end
                     end
-                    //if(trigger_reg == 0) begin
-                    //    next = HIGH_COUNT;
-                    //end
                 end
                 HIGH_COUNT : begin
                     dist_next = 0; 
@@ -203,12 +201,11 @@ module clk_div_100(
     input  logic reset,
     output logic o_tick
 );
-    // for test --> 속도 10M정도로 올렷음
     parameter FCOUNT = 100; //1us tick generate
     logic [$clog2(FCOUNT)-1:0] count_reg, count_next;
-    logic tick_reg, tick_next; // 출력을 f/f으로 내보내기 위해서.
+    logic tick_reg, tick_next; 
 
-    assign o_tick = tick_reg; // 최종 출력. 
+    assign o_tick = tick_reg;
 
     always_ff @(posedge clk, posedge reset) begin
         if(reset) begin
