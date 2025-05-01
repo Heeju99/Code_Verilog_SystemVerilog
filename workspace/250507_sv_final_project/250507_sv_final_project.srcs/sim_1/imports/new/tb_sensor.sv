@@ -20,8 +20,6 @@ interface APB_Slave_Interface;
 
 endinterface 
 
-
-
 class transaction;
     rand logic [ 3:0] PADDR;
     rand logic [31:0] PWDATA;
@@ -36,7 +34,7 @@ class transaction;
     logic        echo;
     //additional
     logic  [ 8:0] distance;
-    rand logic  [15:0] rand_distance;
+    rand logic  [16:0] rand_distance;
 
     constraint c_paddr {PADDR inside {4'h0, 4'h4};} 
     constraint c_dist {24 < rand_distance;
@@ -194,9 +192,9 @@ class scoreboard;
     endfunction  //new()
 
 task run();
+    forever begin
     detect_pass = 0;
     enable_pass = 0;
-    forever begin
         Mon2SCB_mbox.get(sen_tr);
         sen_tr.display("SCB");
 
@@ -215,10 +213,12 @@ task run();
                         $display("SENSOR ENABLE FAIL: %0d != %0d", sen_tr.distance[8:0], expected_distance[8:0]);
                     end
                 end else begin //PADDR == 4'h4;
-                    //$display("ENABLE NOT ALLOWED");
+                    $display("ENABLE NOT ALLOWED");
+                    enable_pass = 1;
                 end
             end else begin //FCR_EN == 0;
                 $display("ENABLE NOT ALLOWED");
+                    enable_pass = 1;
             end
         end else begin  // read mode
             refSenReg[1] = sen_tr.distance;
@@ -233,12 +233,13 @@ task run();
                 end
             end else begin
                 $display("SENSOR DETECT NOT ALLOWED");
+                enable_pass = 1;
             end
         end
         ->gen_next_event;
 
         // 
-        if (detect_pass == 1 && enable_pass == 1) begin
+        if (detect_pass == 1 || enable_pass == 1) begin
             pass_cnt = pass_cnt + 1;
         end else begin
             fail_cnt = fail_cnt + 1;
@@ -325,7 +326,7 @@ module tb_Sensor();
         sen_intf.PRESET = 1;
         #10 sen_intf.PRESET = 0;
         sen_env = new(sen_intf); 
-        sen_env.run(100);  
+        sen_env.run(1000);  
         #30;
         $display("finished");
         $finish;
