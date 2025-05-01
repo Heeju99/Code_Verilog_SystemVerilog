@@ -67,13 +67,13 @@ module APB_SlaveIntf_sensor (
                             2'd2: ;                     //echo_done
                             // 2'd3: slv_reg3 <= PWDATA;
                         endcase
-                end else begin
-                    PRDATA <= 32'bx;
-                        case (PADDR[3:2])
-                            2'd0: PRDATA <= slv_reg0;  //fcr_en
-                            2'd1: PRDATA <= slv_reg1;  //dist
-                            2'd2: PRDATA <= slv_reg2;  
-                            // 2'd3: PRDATA <= slv_reg3;
+                    end else begin
+                        PRDATA <= 32'bx;
+                            case (PADDR[3:2])
+                                2'd0: PRDATA <= slv_reg0;  //fcr_en
+                                2'd1: PRDATA <= slv_reg1;  //dist
+                                2'd2: PRDATA <= slv_reg2;  
+                                // 2'd3: PRDATA <= slv_reg3;
                         endcase
                     end
             end else begin

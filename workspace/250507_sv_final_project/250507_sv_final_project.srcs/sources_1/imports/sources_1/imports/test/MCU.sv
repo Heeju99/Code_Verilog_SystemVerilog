@@ -11,7 +11,7 @@ module MCU (
     output logic [7:0] fndFont,
     output logic       trigger,
     input  logic       echo
-);
+);//
     // global signals
     logic        PCLK;
     logic        PRESET;

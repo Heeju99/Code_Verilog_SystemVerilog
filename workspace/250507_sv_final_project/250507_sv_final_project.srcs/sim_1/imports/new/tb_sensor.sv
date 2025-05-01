@@ -15,7 +15,7 @@ interface APB_Slave_Interface;
     logic        trigger;
     logic        echo;
     //additional
-    logic  [8:0] distance;
+    logic  [ 8:0] distance;
     logic  [16:0] rand_distance;
 
 endinterface 
@@ -35,19 +35,19 @@ class transaction;
     logic        trigger;
     logic        echo;
     //additional
-    logic  [8:0] distance;
-    rand logic  [16:0] rand_distance;
+    logic  [ 8:0] distance;
+    rand logic  [15:0] rand_distance;
 
-    constraint c_paddr {PADDR inside {4'h0, 4'h4};}
-    constraint c_dist {23500 < rand_distance < 100000;}
+    constraint c_paddr {PADDR inside {4'h0, 4'h4};} 
+    constraint c_dist {24 < rand_distance;
+                       80 > rand_distance;}
     constraint c_paddr_0 {
         if (PADDR == 0)
-        PWDATA inside {1'b0, 1'b1};
+        PWDATA inside {32'h00000000, 32'h00000001};
     }
-
     task display(string name);
         $display(
-            "[%s] PADDR=%h, PWDATA=%h, PWRITE=%h ,PENABLE=%h, PSEL=%h, PRDATA=%h, PREADY=%h, trigger=%h, echo=%h, distance=%h, rand_distance=%d",
+            "[%s] PADDR=%h, PWDATA=%h, PWRITE=%h ,PENABLE=%h, PSEL=%h, PRDATA=%0d, PREADY=%h, trigger=%h, echo=%h, distance=%d, rand_distance=%d",
             name, PADDR, PWDATA, PWRITE, PENABLE, PSEL, PRDATA, PREADY,
             trigger, echo, distance, rand_distance);
     endtask  //display
@@ -101,6 +101,7 @@ class driver;
             sen_intf.PWRITE <= sen_tr.PWRITE;
             sen_intf.PENABLE <= 1'b0;
             sen_intf.PSEL <= 1'b1;
+
             @(posedge sen_intf.PCLK);
             sen_intf.PADDR <= sen_tr.PADDR;
             sen_intf.PWDATA <= sen_tr.PWDATA;
@@ -108,18 +109,15 @@ class driver;
             sen_intf.PENABLE <= 1'b1;
             sen_intf.PSEL <= 1'b1;
             sen_intf.rand_distance <= sen_tr.rand_distance;
-            sen_intf.distance <= sen_tr.distance;
+            //sen_intf.distance <= sen_tr.distance;
             wait (sen_intf.PREADY == 1'b1);
-            @(posedge sen_intf.PCLK);
-            @(posedge sen_intf.PCLK);
-        
-            if (sen_tr.PADDR == 0 && sen_tr.PWDATA == 1) begin
-                sen_intf.trigger <= 1;
-                #10700; //10tick
-                sen_intf.trigger <= 0;
-
-                sen_intf.echo <= 1;
-                #(sen_tr.rand_distance * 58);  
+                #50;
+            if (sen_tr.PADDR == 0 && sen_tr.PWDATA == 1 && sen_tr.PWRITE) begin
+                wait(sen_intf.trigger == 1); 
+                wait(sen_intf.trigger == 0); 
+                #10700; //8cycle Sonic Burst
+                sen_intf.echo  <= 1;
+                #(sen_tr.rand_distance * 1000 * 58);  
                 sen_intf.echo <= 0;
             end
             ->drv_next_event;
@@ -145,6 +143,9 @@ class monitor;
         forever begin
             sen_tr = new();
             @(drv_next_event);
+            @(posedge sen_intf.PCLK);
+            @(posedge sen_intf.PCLK);
+
             #1;
             sen_tr.PADDR   = sen_intf.PADDR;
             sen_tr.PWDATA  = sen_intf.PWDATA;
@@ -172,7 +173,7 @@ class scoreboard;
 
     // reference model
     logic [31:0] refSenReg[0:2];
-    logic [ 8:0] refDist;
+    logic [31:0] expected_distance;
 
     //to count
     logic [9:0] write_cnt = 0;
@@ -192,53 +193,59 @@ class scoreboard;
         end
     endfunction  //new()
 
-    task run();
-        detect_pass = 0;
-        enable_pass = 0;
-        forever begin
-            Mon2SCB_mbox.get(sen_tr);
-            sen_tr.display("SCB");
-            if (sen_tr.PWRITE) begin  // write mode
-                refSenReg[0] = sen_tr.PWDATA;
-                refSenReg[1] = sen_tr.distance;
-                write_cnt = write_cnt + 1;  //write mode count
-                
-                //enable check  
-                if(sen_tr.PADDR[3:2] == 0 & sen_tr.PWDATA == 1) begin //FCN_EN ==  1
-                    //if(sen_tr.trigger == refSenReg[0]) begin // dangerous
-                    if(sen_tr.rand_distance == refSenReg[1]) begin
-                        $display("SENSOR EnableComport PASS");
+task run();
+    detect_pass = 0;
+    enable_pass = 0;
+    forever begin
+        Mon2SCB_mbox.get(sen_tr);
+        sen_tr.display("SCB");
+
+        if (sen_tr.PWRITE) begin  // write mode
+            refSenReg[sen_tr.PADDR] = sen_tr.PWDATA;
+            write_cnt = write_cnt + 1;
+
+            if (refSenReg[0] == 1) begin  //FCR_EN == 1
+                expected_distance = (sen_tr.rand_distance);
+                if (sen_tr.PADDR == 4'h0) begin
+                    if (sen_tr.distance[8:0] == expected_distance[8:0]) begin
                         enable_pass = 1;
+                        $display("SENSOR ENABLE PASS: %0d == %0d", sen_tr.distance[8:0], expected_distance[8:0]);
                     end else begin
-                        $display("SENSOR EnableComport FAIL");
                         enable_pass = 0;
+                        $display("SENSOR ENABLE FAIL: %0d != %0d", sen_tr.distance[8:0], expected_distance[8:0]);
                     end
-                end 
-            end else begin // readmode
-                if(sen_tr.PADDR[3:2] == 1 & sen_tr.PWRITE == 0) begin
-                    refDist = sen_tr.distance;
-
-                    if(refDist == (sen_tr.rand_distance)/58) begin
-                        $display("SENSOR Detect PASS");
-                        detect_pass = 1;
-                    end else begin
-                        $display("SENSOR Detect FAIL");
-                        detect_pass = 0;
-                    end
+                end else begin //PADDR == 4'h4;
+                    //$display("ENABLE NOT ALLOWED");
                 end
-                read_cnt = read_cnt + 1;
+            end else begin //FCR_EN == 0;
+                $display("ENABLE NOT ALLOWED");
             end
-            ->gen_next_event; //send "done" to Gen
-
-            //calculate score + display
-            if (detect_pass == 1 | enable_pass == 1) begin
-                pass_cnt = pass_cnt + 1;
+        end else begin  // read mode
+            refSenReg[1] = sen_tr.distance;
+            read_cnt = read_cnt + 1;
+            if(sen_tr.PADDR == 4'h4) begin
+                if(sen_tr.PRDATA[8:0] == refSenReg[1][8:0]) begin
+                    detect_pass = 1;
+                    $display("SENSOR Detect PASS: %0d == %0d", sen_tr.PRDATA[8:0], refSenReg[1][8:0]);
+                end else begin
+                    detect_pass = 0;
+                    $display("SENSOR Detect FAIL: %0d == %0d", sen_tr.PRDATA[8:0], refSenReg[1][8:0]);
+                end
             end else begin
-                fail_cnt = fail_cnt + 1;
+                $display("SENSOR DETECT NOT ALLOWED");
             end
-            total_cnt = total_cnt + 1;
         end
-    endtask  //run
+        ->gen_next_event;
+
+        // 
+        if (detect_pass == 1 && enable_pass == 1) begin
+            pass_cnt = pass_cnt + 1;
+        end else begin
+            fail_cnt = fail_cnt + 1;
+        end
+        total_cnt = total_cnt + 1;
+    end
+endtask
 
     task report();
         $display("===============================");
@@ -250,7 +257,7 @@ class scoreboard;
         $display("      Fail Test  : %0d", fail_cnt);
         $display("      Total Test : %0d", total_cnt);
         $display("===============================");
-        $display("==   test bench is finished  ==");
+        $display("==   testbench is finished  ==");
         $display("===============================");
     endtask  //report
 
