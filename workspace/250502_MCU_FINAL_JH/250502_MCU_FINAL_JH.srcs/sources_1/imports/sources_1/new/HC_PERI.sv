@@ -17,16 +17,18 @@ module ultrasonic_periph(
     output logic        trigger,
     input  logic        echo
     //additional
-    //output logic  [8:0] distance
 );
-    logic        fcr_en;
-    //for tb
     logic  [8:0] distance;
+    logic        fcr_en;
+    //logic  [8:0] distance;
     logic        echo_done;
 
     APB_SlaveIntf_sensor U_APB_Intf_sensor (.*);
     sensor_dp U_sensor_IP (.*);
 endmodule
+
+
+
 
 module APB_SlaveIntf_sensor (
     // global signal
@@ -84,6 +86,9 @@ module APB_SlaveIntf_sensor (
     end
 
 endmodule
+
+
+
 
 module sensor_dp(
     input  logic PCLK,
@@ -151,11 +156,12 @@ module sensor_dp(
             case(state)
                 IDLE: begin
                     trigger_next = 0;
-                    echo_done_next = 0;
                     if(fcr_en) begin
+                        echo_done_next = 0;
                         next = START;
                     end
                 end
+
                 START : begin
                     if(o_tick) begin
                         if(tick_count_reg == 10) begin

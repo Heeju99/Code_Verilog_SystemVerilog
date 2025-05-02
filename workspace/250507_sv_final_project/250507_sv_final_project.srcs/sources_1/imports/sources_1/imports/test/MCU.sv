@@ -29,6 +29,7 @@ module MCU (
     logic        PSEL_GPIOD;
     logic        PSEL_GPOE;
     logic        PSEL_SENSOR;
+    logic        PSEL_TIMER;
 
     logic [31:0] PRDATA_RAM;
     logic [31:0] PRDATA_GPO;
@@ -37,6 +38,7 @@ module MCU (
     logic [31:0] PRDATA_GPIOD;
     logic [31:0] PRDATA_GPOE;
     logic [31:0] PRDATA_SENSOR;
+    logic [31:0] PRDATA_TIMER;
     
     logic        PREADY_RAM;
     logic        PREADY_GPO;
@@ -45,6 +47,7 @@ module MCU (
     logic        PREADY_GPIOD;
     logic        PREADY_GPOE;
     logic        PREADY_SENSOR;
+    logic        PREADY_TIMER;
 
     // CPU - APB_Master Signals
     // Internal Interface Signals
@@ -86,6 +89,7 @@ module MCU (
         .PSEL4  (PSEL_GPIOD),
         .PSEL5  (PSEL_GPOE),
         .PSEL6  (PSEL_SENSOR),
+        .PSEL7  (PSEL_TIMER),
 
         .PRDATA0(PRDATA_RAM),
         .PRDATA1(PRDATA_GPO),
@@ -94,6 +98,7 @@ module MCU (
         .PRDATA4(PRDATA_GPIOD),
         .PRDATA5(PRDATA_GPOE),
         .PRDATA6(PRDATA_SENSOR),
+        .PRDATA7(PRDATA_TIMER),
 
         .PREADY0(PREADY_RAM),
         .PREADY1(PREADY_GPO),
@@ -101,7 +106,8 @@ module MCU (
         .PREADY3(PREADY_GPIOC),
         .PREADY4(PREADY_GPIOD),
         .PREADY5(PREADY_GPOE),
-        .PREADY6(PREADY_SENSOR)
+        .PREADY6(PREADY_SENSOR),
+        .PREADY7(PREADY_TIMER)
         
     );
 
@@ -167,4 +173,12 @@ module MCU (
         .trigger(trigger),
         .echo(echo)
 );
+
+    Timer_Periph U_TIMER_Peri(
+        .*,
+        .PSEL(PSEL_TIMER),
+        .PRDATA(PRDATA_TIMER),
+        .PREADY(PREADY_TIMER)
+);
+
 endmodule
