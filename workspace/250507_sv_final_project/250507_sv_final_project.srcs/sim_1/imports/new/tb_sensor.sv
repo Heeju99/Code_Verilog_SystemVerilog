@@ -326,7 +326,7 @@ module tb_Sensor();
         sen_intf.PRESET = 1;
         #10 sen_intf.PRESET = 0;
         sen_env = new(sen_intf); 
-        sen_env.run(1000);  
+        sen_env.run(10000);  
         #30;
         $display("finished");
         $finish;

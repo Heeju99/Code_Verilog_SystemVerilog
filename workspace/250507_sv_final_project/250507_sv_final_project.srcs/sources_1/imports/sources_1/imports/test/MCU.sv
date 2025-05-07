@@ -171,7 +171,8 @@ module MCU (
         .PREADY(PREADY_SENSOR),
         // export signals
         .trigger(trigger),
-        .echo(echo)
+        .echo(echo),
+        .distance(distance)
 );
 
     Timer_Periph U_TIMER_Peri(

@@ -15,13 +15,13 @@ module ultrasonic_periph(
 
     // export signals
     output logic        trigger,
-    input  logic        echo
+    input  logic        echo,
     //additional
-    //output logic  [8:0] distance
+    output logic  [8:0] distance
 );
     logic        fcr_en;
     //for tb
-    logic  [8:0] distance;
+    //logic  [8:0] distance;
     logic        echo_done;
 
     APB_SlaveIntf_sensor U_APB_Intf_sensor (.*);
