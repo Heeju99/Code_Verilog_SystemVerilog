@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-
+//
 module AXI4_lite_Master(
     // Global Signal
     input logic ACLK,
@@ -36,8 +36,8 @@ module AXI4_lite_Master(
     output logic [31:0] rdata
     );
 
-    logic w_ready_reg, w_ready_next, r_ready_reg, r_ready_next;
-    assign ready = (write) ?  w_ready_reg : r_ready_reg;
+    logic w_ready, r_ready;
+    assign ready = (write) ?  w_ready : r_ready;
     
 
     //WRITE Transaction, AW Channel transfer
@@ -124,11 +124,11 @@ module AXI4_lite_Master(
     always_comb begin
         b_state_next = b_state;
         BREADY = 1'b0;
-        w_ready_next = w_ready_reg;
+        w_ready = 1'b0;
         case(b_state)
             B_IDLE_S : begin
                 BREADY = 1'b0;
-                w_ready_next  = 1'b0;
+                w_ready  = 1'b0;
                 if(WVALID) begin
                     b_state_next = B_READY_S;
                 end
@@ -136,7 +136,7 @@ module AXI4_lite_Master(
             B_READY_S : begin
                 BREADY = 1'b1;
                 if(BVALID) begin  //slave에서 보내는 BVALID를 받아야 함
-                    w_ready_next  = 1'b1;
+                    w_ready = 1'b1;
                     b_state_next = B_IDLE_S;
                 end
             end
@@ -194,7 +194,7 @@ module AXI4_lite_Master(
         r_state_next = r_state;
         RREADY = 1'b0;
         rdata = RDATA;
-        r_ready_next = r_ready_reg;
+        r_ready = 1'b0;
         case(r_state)
             R_IDLE_S : begin
                 RREADY = 1'b0;
@@ -206,7 +206,7 @@ module AXI4_lite_Master(
                 RREADY = 1'b1;
                 if(RVALID) begin
                     rdata = RDATA;  
-                    r_ready_next = 1'b1;
+                    r_ready = 1'b1;
                     r_state_next = R_IDLE_S;
                 end
             end
