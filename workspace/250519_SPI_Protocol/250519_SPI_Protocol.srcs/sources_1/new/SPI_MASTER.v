@@ -82,6 +82,7 @@ module SPI_MASTER(
             end
             CP0  : begin
                 //r_sclk = 0;
+                //RisingEdge
                 if(sclk_counter_reg == 49) begin
                     temp_rx_data_next = {temp_rx_data_reg[6:0], MISO};
                     sclk_counter_next = 0;
