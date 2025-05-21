@@ -82,9 +82,9 @@ module SPI_MASTER(
             end
             CP0  : begin
                 //r_sclk = 0;
-                //RisingEdge
+                //Rising Edge
                 if(sclk_counter_reg == 49) begin
-                    temp_rx_data_next = {temp_rx_data_reg[6:0], MISO};
+                    temp_rx_data_next = {temp_rx_data_reg[6:0], MISO}; //MISO를 받아드림
                     sclk_counter_next = 0;
                     state_next        = CP1;
                 end else begin
@@ -93,13 +93,14 @@ module SPI_MASTER(
             end
             CP1  : begin
                 //r_sclk = 1;
+                //Falling Edge
                 if(sclk_counter_reg == 49) begin
                     if(bit_counter_reg == 7) begin
                         done             = 1;
                         bit_counter_next = 0;
                         state_next       = IDLE;
                     end else begin
-                        temp_tx_data_next = {temp_tx_data_reg[6:0], 1'b0};
+                        temp_tx_data_next = {temp_tx_data_reg[6:0], 1'b0}; //MOSI 출력 과정
                         sclk_counter_next = 0;
                         bit_counter_next  = bit_counter_reg + 1;
                         state_next        = CP0;
