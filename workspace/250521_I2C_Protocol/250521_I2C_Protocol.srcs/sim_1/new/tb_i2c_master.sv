@@ -47,6 +47,7 @@ module tb_i2c_master();
     initial begin
         clk = 0;
         reset = 1;
+        start = 0;
         stop = 0;
         ACK   = 0;
         #10 reset = 0;
@@ -62,15 +63,15 @@ module tb_i2c_master();
         @(posedge clk);
         wait(tx_done == 1);
                 
+        @(posedge clk);
+        tx_data = 8'h55;
+        @(posedge clk);
+        wait(tx_done == 1);
         
         $finish;
         //ACK = 0; 
 /*        
 
-        @(posedge clk);
-        tx_data = 8'h55;
-        @(posedge clk);
-        wait(tx_done == 1);
 
         @(posedge clk);
         tx_data = 8'haa;

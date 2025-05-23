@@ -22,6 +22,22 @@ module I2C_Slave_Interface(
     assign SDA = (SDA_en) ? (sda_reg) : 1'bz;
 
 
+//additional
+    reg sclk_sync0, sclk_sync1;
+
+    always @(posedge clk, posedge reset) begin
+        if(reset) begin
+            sclk_sync0 <= 0;
+            sclk_sync1 <= 0;
+        end else begin
+            sclk_sync0 <= SCL;
+            sclk_sync1 <= sclk_sync0;
+        end
+    end
+    wire scl_rising  = sclk_sync0 & ~sclk_sync1;
+    wire scl_falling = ~sclk_sync0 & sclk_sync1;
+
+
     always @(negedge SCL) begin
         if(SDA == 0) begin
             flag <= 1;
@@ -79,6 +95,7 @@ module I2C_Slave_Interface(
                 SDA_en = 0;
                 temp_slave_data_next = {temp_slave_data_reg[6:0], SDA};
                     if(bit_counter_reg == 7) begin
+                        SDA_en = 0;
                         bit_counter_next = 0;
                         if(temp_slave_data_reg[7:1] == ADDR) begin //주소 비교
                             state_next = WRITE; //WRITE;
@@ -90,9 +107,11 @@ module I2C_Slave_Interface(
             
             //SEND ACK to Master
             WRITE : begin 
-                sda_reg = 0;
-                SDA_en = 1;
-                state_next = HOLD;
+                    sda_reg = 0;
+                    SDA_en = 1;
+                    if(scl_falling) begin
+                    state_next = HOLD;
+                    end
             end
 
             HOLD : begin

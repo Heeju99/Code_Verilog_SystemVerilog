@@ -23,7 +23,7 @@ module I2C_Master(
 
 
     parameter IDLE = 0, START1 = 1, START2 = 2, HOLD1 = 3, DATA1 = 4, DATA2 = 5, DATA3 = 6,
-              DATA4 = 7, HOLD2 = 8, STOP1 = 9, STOP2 = 10, WAIT = 19,
+              DATA4 = 7, HOLD2 = 8, STOP1 = 9, STOP2 = 10, HOLD4 = 20,
               ACK1_W = 15, ACK2_W = 16, ACK3_W = 17, ACK4_W = 18;//, READ1 = 11, READ2 = 12, READ3 = 13,
               //READ4 = 14, ACK1_W = 15, ACK2_W = 16, ACK3_W = 17, ACK4_W = 18,
               //ACK1_R = 19, ACK2_R = 20, ACK3_R = 21, ACK4_R = 22;
@@ -172,7 +172,7 @@ always @(*) begin
                     tx_done_next = 1;
                     //
                     bit_counter_next = 0;
-                    state_next = WAIT;//ACK1_W;
+                    state_next = HOLD4;//ACK1_W;
                 end else begin
                         temp_tx_data_next = {temp_tx_data_reg[6:0], 1'b0};
                         bit_counter_next = bit_counter_reg + 1;
@@ -183,15 +183,16 @@ always @(*) begin
             end
         end
 
-        WAIT : begin
-            SCL = 0;
-            sda_reg = temp_tx_data_reg[7];
+        HOLD4 : begin
+            SCL = 1;
+            sda_reg = 0;
             SDA_en = 1;
             if(scl_counter_reg == 249) begin
+                scl_counter_next = 0;
                 state_next = ACK1_W;
             end else begin
-                scl_counter_next = scl_counter_reg + 1;
-            end 
+                scl_counter_next = scl_counter_reg + 1; 
+            end
         end
 
         //15
@@ -242,16 +243,23 @@ always @(*) begin
         
         //8
         HOLD2 : begin
+            SCL = 0;
+            sda_reg = 0;
+            SDA_en = 1;
             temp_tx_data_next = tx_data[7:0];
             //change state
-            state_next = DATA1;
-            /*if(SDA == 0) begin
-                state_next = DATA1;
+            //state_next = DATA1;
+            if(scl_counter_reg == 249) begin
+                if(SDA == 0) begin
+                    state_next = DATA1;// DATA1
+                end else begin
+                    state_next = STOP1;
+                end
+                if(stop) begin
+                    state_next = STOP1;
+                end
             end else begin
-                state_next = STOP1;
-            end*/
-            if(stop) begin
-                state_next = STOP1;
+                scl_counter_next = scl_counter_reg + 1;
             end
         end
         //9
