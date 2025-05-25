@@ -111,7 +111,7 @@ module I2C_Slave_Interface(
                     SDA_en = 1;
                     if(scl_falling) begin
                     state_next = HOLD;
-                    end
+                end
             end
 
             HOLD : begin

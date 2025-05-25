@@ -176,7 +176,7 @@ always @(*) begin
                 end else begin
                         temp_tx_data_next = {temp_tx_data_reg[6:0], 1'b0};
                         bit_counter_next = bit_counter_reg + 1;
-                        state_next = DATA1;
+                        state_next = ACK1_W; //DATA1;
                     end
             end else begin
                 scl_counter_next = scl_counter_reg + 1;

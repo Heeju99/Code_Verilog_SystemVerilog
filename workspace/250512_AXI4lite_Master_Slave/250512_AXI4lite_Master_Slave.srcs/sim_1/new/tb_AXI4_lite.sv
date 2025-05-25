@@ -62,12 +62,6 @@ module tb_AXI4_lite();
         #1; transfer = 0;
         wait(ready == 1);
         
-        @(posedge ACLK);
-        #1; addr = 12; wdata = 13; write = 1; transfer = 1;
-        @(posedge ACLK);
-        #1; transfer = 0;
-        wait(ready == 1);
-
         //read
         @(posedge ACLK);
         #1; addr = 12; write = 0; transfer = 1;
@@ -94,5 +88,6 @@ module tb_AXI4_lite();
         wait(ready == 1);
 
         #100;
+        $finish;
     end
 endmodule
