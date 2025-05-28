@@ -1,4 +1,4 @@
-$repoPath = "C:\Users\kccistc\Documents\GitHub\SystemVeilog"  # 로컬 레포지토리 경로
+$repoPath = "C:\Users\kccistc\Documents\GitHub\Code_Verilog_SystemVerilog"  # 로컬 레포지토리 경로
 $gitExe = "C:\Program Files\Git\bin\git.exe"   # Git 실행 파일 경로
 $vivadoPath = "C:\Xilinx\Vivado\2020.2\bin\vivado.bat"  # Vivado 실행 경로
 $vivadoWorkspace = "C:\working\FPGA_HARMAN"
