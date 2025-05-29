@@ -5,35 +5,35 @@ module VGA_Controller (
     input  logic       reset,
     output logic       h_sync,
     output logic       v_sync,
-    output logic       DE,
     output logic [9:0] x_pixel,
-    output logic [9:0] y_pixel
+    output logic [9:0] y_pixel,
+    output logic       DE
 );
 
-    logic       pclk;
+    logic pclk;
     logic [9:0] h_counter, v_counter;
 
-    pixel_clk_gen U_Pix_Clk_Gen (
+    pixel_clk_gen U_Pix_CLK_Gen (
         .clk  (clk),
         .reset(reset),
         .pclk (pclk)
     );
 
-    pixel_counter U_Pix_Counter (
-        .pclk     (pclk),
-        .reset    (reset),
+    pixel_counter U_Pixel_Counter (
+        .pclk(pclk),
+        .reset(reset),
         .h_counter(h_counter),
         .v_counter(v_counter)
     );
-    
-    vga_decoder U_VGA_Decoder (
+
+    vga_decoder U_vga_decoder (
         .h_counter(h_counter),
         .v_counter(v_counter),
-        .h_sync   (h_sync),
-        .v_sync   (v_sync),
-        .x_pixel  (x_pixel),
-        .y_pixel  (y_pixel),
-        .DE       (DE)
+        .h_sync(h_sync),
+        .v_sync(v_sync),
+        .x_pixel(x_pixel),
+        .y_pixel(y_pixel),
+        .DE(DE)
     );
 
 endmodule
@@ -43,20 +43,19 @@ module pixel_clk_gen (
     input  logic reset,
     output logic pclk
 );
-
     logic [1:0] p_counter;
 
     always_ff @(posedge clk, posedge reset) begin
         if (reset) begin
             p_counter <= 0;
-            pclk      <= 1'b0;
+            pclk <= 0;
         end else begin
             if (p_counter == 3) begin
                 p_counter <= 0;
-                pclk      <= 1'b1;
+                pclk <= 1'b1;
             end else begin
                 p_counter <= p_counter + 1;
-                pclk      <= 1'b0;
+                pclk <= 1'b0;
             end
         end
     end
@@ -75,8 +74,11 @@ module pixel_counter (
         if (reset) begin
             h_counter <= 0;
         end else begin
-            if (h_counter == H_MAX - 1) h_counter <= 0;
-            else h_counter <= h_counter + 1;
+            if (h_counter == H_MAX - 1) begin
+                h_counter <= 0;
+            end else begin
+                h_counter <= h_counter + 1;
+            end
         end
     end
 
@@ -93,16 +95,17 @@ module pixel_counter (
             end
         end
     end
+
 endmodule
 
 module vga_decoder (
-    input  logic [9:0] h_counter,
-    input  logic [9:0] v_counter,
-    output logic       h_sync,
-    output logic       v_sync,
-    output logic [9:0] x_pixel,
-    output logic [9:0] y_pixel,
-    output logic       DE
+    input  [9:0] h_counter,
+    input  [9:0] v_counter,
+    output       h_sync,
+    output       v_sync,
+    output [9:0] x_pixel,
+    output [9:0] y_pixel,
+    output       DE
 );
 
     localparam H_Visible_area = 640;
@@ -115,16 +118,14 @@ module vga_decoder (
     localparam V_Front_porch = 10;
     localparam V_Sync_pulse = 2;
     localparam V_Back_porch = 33;
-    localparam V_Whole_frame = 525;
+    localparam V_Whole_line = 525;
 
-    assign h_sync = !((h_counter >= (H_Visible_area + H_Front_porch)) 
-        && (h_counter < (H_Visible_area + H_Front_porch + H_Sync_pulse))) ;
-
-    assign v_sync = !((v_counter >= (V_Visible_area + V_Front_porch)) 
-        && (v_counter < (V_Visible_area + V_Front_porch + V_Sync_pulse))) ;
-
+    assign h_sync = !((h_counter >= (H_Visible_area + H_Front_porch)) && (h_counter < (H_Visible_area + H_Front_porch + H_Sync_pulse)));
+    assign v_sync = !((v_counter >= (V_Visible_area + V_Front_porch)) && (v_counter < (V_Visible_area + V_Front_porch + V_Sync_pulse)));
     assign DE = (h_counter < H_Visible_area) && (v_counter < V_Visible_area);
+    assign x_pixel = h_counter;
+    assign y_pixel = v_counter;
+    //assign x_pixel = DE ? h_counter : 10'bz;
+    //assign y_pixel = DE ? v_counter : 10'bz;
 
-    assign x_pixel = DE ? h_counter : 10'bz; //display area 안에 있을 때만 
-    assign y_pixel = DE ? v_counter : 10'bz;
 endmodule
