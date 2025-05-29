@@ -3,67 +3,6 @@
 module VGA_Controller (
     input  logic       clk,
     input  logic       reset,
-    input  logic       sw_mode,
-    input  logic [3:0] sw_red,
-    input  logic [3:0] sw_green,
-    input  logic [3:0] sw_blue,
-    output logic       h_sync,
-    output logic       v_sync,
-    output logic [3:0] red_port,
-    output logic [3:0] green_port,
-    output logic [3:0] blue_port
-);
-
-    logic DE;
-    logic [9:0] x_pixel, y_pixel;
-    logic [3:0] red_port_d, red_port_s;
-    logic [3:0] green_port_d, green_port_s;
-    logic [3:0] blue_port_d, blue_port_s;
-    
-    assign red_port = sw_mode ? red_port_d : red_port_s;
-    assign green_port = sw_mode ? green_port_d : green_port_s;
-    assign blue_port = sw_mode ? blue_port_d : blue_port_s;
-
-    vga_rgb_display U_RGB_DISPLAY (
-        .DE        (DE),
-        .x_pixel   (x_pixel),
-        .y_pixel   (y_pixel),
-        .red_port  (red_port_d),
-        .green_port(green_port_d),
-        .blue_port (blue_port_d)
-    );
-
-
-    vga_rgb_switch U_vga_rgb_switch(
-        // switch
-        .sw_red(sw_red),
-        .sw_green(sw_green),
-        .sw_blue(sw_blue),
-        // Enable
-        .DE(DE),
-        //.x_pixel(),  //아직 필요 x
-        //.y_pixel(),  //아직 필요 x
-        .red_port(red_port_s),
-        .green_port(green_port_s),
-        .blue_port(blue_port_s)
-    );
-
-    VGA_Decoder U_VGA_DEC (
-        .clk    (clk),
-        .reset  (reset),
-        .h_sync (h_sync),
-        .v_sync (v_sync),
-        .DE     (DE),
-        .x_pixel(x_pixel),
-        .y_pixel(y_pixel)
-    );
-endmodule
-
-
-
-module VGA_Decoder (
-    input  logic       clk,
-    input  logic       reset,
     output logic       h_sync,
     output logic       v_sync,
     output logic       DE,
