@@ -25,7 +25,7 @@ module QVGA_MemController (
 
     //assign rAddr = display_en ? (y_pixel * 320 + x_pixel) : 0;
 
-    assign {red_port, green_port, blue_port} = display_en ? {rData[15:12], rData[10:7], rData[4:1]} : 12'b0;
+    assign {red_port, green_port, blue_port} = display_en ? {rData[15:12], rData[10:7], rData[4:1]} : 12'b0; // RGB565 -> RGB444
 
     always_comb begin
         if(sw_up) begin
