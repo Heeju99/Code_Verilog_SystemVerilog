@@ -130,7 +130,7 @@ module rom (
     logic [15:0] rom[0:320*240-1];
 
     initial begin
-        $readmemh("heeju.mem", rom); // h면 hex
+        $readmemh("squid_girl.mem", rom); // h면 hex
     end
 
     assign data = rom[addr];
