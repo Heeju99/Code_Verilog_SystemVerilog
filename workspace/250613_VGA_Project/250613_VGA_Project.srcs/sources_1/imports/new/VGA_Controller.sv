@@ -2,6 +2,7 @@
 
 module VGA_Controller (
     input  logic       clk,
+    input  logic       clk_pixel,
     input  logic       reset,
     output logic       rclk,
     output logic       h_sync,
@@ -11,19 +12,20 @@ module VGA_Controller (
     output logic       DE
 );
 
-    logic pclk;
+    //logic pclk;
     logic [9:0] h_counter, v_counter;
 
     assign rclk = clk;
 
+/*
     pixel_clk_gen U_Pix_CLK_Gen (
         .clk  (clk),
         .reset(reset),
         .pclk (pclk)
     );
-
+*/
     pixel_counter U_Pixel_Counter (
-        .pclk(pclk),
+        .pclk(clk_pixel), //pclk
         .reset(reset),
         .h_counter(h_counter),
         .v_counter(v_counter)
@@ -126,7 +128,7 @@ module vga_decoder (
     assign h_sync = !((h_counter >= (H_Visible_area + H_Front_porch)) && (h_counter < (H_Visible_area + H_Front_porch + H_Sync_pulse)));
     assign v_sync = !((v_counter >= (V_Visible_area + V_Front_porch)) && (v_counter < (V_Visible_area + V_Front_porch + V_Sync_pulse)));
     assign DE = (h_counter < H_Visible_area) && (v_counter < V_Visible_area);
-    assign x_pixel = h_counter;
-    assign y_pixel = v_counter;
+    assign x_pixel = DE ? h_counter : 10'd0;
+    assign y_pixel = DE ? v_counter : 10'd0;
 
 endmodule

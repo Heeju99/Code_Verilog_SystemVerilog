@@ -14,7 +14,7 @@ module OV7670_MemController (
     logic [ 7:0] v_counter;  // 240
     logic [15:0] pix_data;
 
-    assign wAddr = v_counter * 320 + h_counter[9:1];
+    assign wAddr = v_counter * 160 + (h_counter[9:1] >> 1);
     assign wData = pix_data;
 
     always_ff @(posedge pclk, posedge reset) begin : h_sequence

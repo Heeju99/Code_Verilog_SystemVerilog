@@ -31,6 +31,7 @@ module OV7670_VGA_Display (
     logic [3:0] m_red_port, m_blue_port, m_green_port;
     logic [3:0] r_filter_red, r_filter_blue,r_filter_green;
     logic [3:0] g_filter_red, g_filter_green, g_filter_blue;
+    logic [3:0] s_filter_red, s_filter_green, s_filter_blue;
 
     pixel_clk_gen U_OV7670_CLK_Gen (
         .clk  (clk),
@@ -95,6 +96,23 @@ module OV7670_VGA_Display (
     .g_filter_blue(g_filter_blue)
 );
 
+    sobel_heeju U_sobel_heeju(
+    .clk(clk),
+    .reset(reset),
+    //input gray
+    .g_filter_red(g_filter_red),
+    .g_filter_green(g_filter_green),
+    .g_filter_blue(g_filter_blue),
+
+    .DE(DE),
+    .x_pixel(x_pixel), 
+    .y_pixel(y_pixel),
+
+    .s_filter_red(s_filter_red), 
+    .s_filter_green(s_filter_green), 
+    .s_filter_blue(s_filter_blue)
+);
+
     rgb_filter U_rgb_filter(
     .sw_mode(sw_mode),
     .red_port(m_red_port),
@@ -108,9 +126,9 @@ module OV7670_VGA_Display (
     mux_2x1 U_Mux_2x1(
     .sw1(sw1),
     //Grayscale
-    .g_filter_red(g_filter_red),
-    .g_filter_green(g_filter_green),
-    .g_filter_blue(g_filter_blue),
+    .g_filter_red(s_filter_red),
+    .g_filter_green(s_filter_green),
+    .g_filter_blue(s_filter_blue),
     //Colour
     .r_filter_red(r_filter_red),
     .r_filter_green(r_filter_green),
@@ -214,3 +232,99 @@ module rgb_filter(
         end
     end
 endmodule 
+
+module sobel_heeju(
+    input logic clk,
+    input logic reset,
+    //input gray
+    input logic [3:0] g_filter_red,
+    input logic [3:0] g_filter_green,
+    input logic [3:0] g_filter_blue,
+
+    input logic       DE,
+    input logic [9:0] x_pixel, 
+    input logic [9:0] y_pixel,
+
+    output logic [3:0] s_filter_red, 
+    output logic [3:0] s_filter_green, 
+    output logic [3:0] s_filter_blue
+);
+    localparam IMG_WIDTH = 640;
+    localparam THRESHOLD = 5; 
+
+    //additional
+    logic [11:0] sobel_out;
+    logic [11:0] gray_in = {g_filter_red + g_filter_green + g_filter_blue};
+
+    logic [3:0] line_buffer_1[0:IMG_WIDTH-1];
+    logic [3:0] line_buffer_2[0:IMG_WIDTH-1];
+
+    logic [3:0] p11, p12, p13;
+    logic [3:0] p21, p22, p23;
+    logic [3:0] p31, p32, p33;
+
+    logic [2:0] valid_pipeline;
+
+    logic signed [10:0] gx, gy;
+    logic [10:0] mag;
+
+    integer i;
+
+    assign s_filter_red = sobel_out[3:0];      //((mag_sobel_0[12:5] > threshold) && sobel_en) ? 4'hF : 4'h0;
+    assign s_filter_blue = sobel_out[3:0];     //((mag_sobel_1[12:5] > threshold) && sobel_en) ? 4'hF : 4'h0;
+    assign s_filter_green = sobel_out[3:0];    //((mag_sobel_2[12:5] > threshold) && sobel_en) ? 4'hF : 4'h0;
+
+
+    always @(posedge clk) begin
+        if (reset) begin
+            for (i = 0; i < IMG_WIDTH; i = i + 1) begin
+                line_buffer_1[i] <= 0;
+                line_buffer_2[i] <= 0;
+            end
+        end else if (DE) begin
+            line_buffer_2[x_pixel] <= line_buffer_1[x_pixel];
+            line_buffer_1[x_pixel] <= gray_in[3:0];
+        end
+    end
+
+    always @(posedge clk) begin
+        if (reset) begin
+            {p11, p12, p13, p21, p22, p23, p31, p32, p33} <= 0;
+            valid_pipeline <= 0;
+        end else if (DE) begin
+            p13 <= line_buffer_2[x_pixel];
+            p12 <= p13;
+            p11 <= p12;
+
+            p23 <= line_buffer_1[x_pixel];
+            p22 <= p23;
+            p21 <= p22;
+
+            p33 <= gray_in[3:0];
+            p32 <= p33;
+            p31 <= p32;
+
+            valid_pipeline <= {
+                valid_pipeline[1:0], (x_pixel >= 2 && y_pixel >= 2)
+            };
+        end else begin
+            valid_pipeline <= {valid_pipeline[1:0], 1'b0};
+        end
+    end
+
+    always @(posedge clk) begin
+        if (reset) begin
+            gx        <= 0;
+            gy        <= 0;
+            mag       <= 0;
+            sobel_out <= 0;
+        end else if (valid_pipeline[2]) begin
+            gx <= (p13 + (p23 << 1) + p33) - (p11 + (p21 << 1) + p31);
+            gy <= (p31 + (p32 << 1) + p33) - (p11 + (p12 << 1) + p13);
+            mag <= (gx[10] ? -gx : gx) + (gy[10] ? -gy : gy);
+            sobel_out <= (mag > THRESHOLD) ? 12'hFFF : 12'h0;
+        end else begin
+            sobel_out <= 0;
+        end
+    end
+endmodule

@@ -13,7 +13,7 @@ module Frame_Buffer (
     output logic [15:0] rData
 );
 
-    logic [15:0] mem[0:(320*240-1)];
+    logic [15:0] mem[0:(160*120-1)];
 
     // write side
     always_ff @(posedge wclk) begin : write_side
