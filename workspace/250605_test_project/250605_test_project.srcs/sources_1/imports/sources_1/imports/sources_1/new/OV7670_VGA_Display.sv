@@ -146,19 +146,19 @@ module OV7670_VGA_Display (
         .Gray_diff2(Gray_diff2)
     );
 
-    // // Sobel filter
-    // sobel_filter_top U_sobel_filter_top(
-    //     .clk(clk_25Mhz),
-    //     .reset(reset),
-    //     .threshold(threshold),
-    //     .g_filter_diff1(Gray_diff1),
-    //     .g_filter_diff2(Gray_diff2),
-    //     .DE(DE),
-    //     .x_pixel(x_pixel),
-    //     .y_pixel(y_pixel),
-    //     .sobel_out1(sobel_out1),
-    //     .sobel_out2(sobel_out2)
-    // );
+     // Sobel filter
+     sobel_filter_top U_sobel_filter_top(
+         .clk(clk_25Mhz),
+         .reset(reset),
+         .threshold(threshold),
+         .g_filter_diff1(Gray_diff1),
+         .g_filter_diff2(Gray_diff2),
+         .DE(DE),
+         .x_pixel(x_pixel),
+         .y_pixel(y_pixel),
+         .sobel_out1(sobel_out1),
+         .sobel_out2(sobel_out2)
+     );
 
     // Diff_detect
 
@@ -178,8 +178,8 @@ module OV7670_VGA_Display (
         .reset(reset),               // 추가: 리셋 신호
         .DE(DE),
         .threshold(threshold),
-        .curr_pixel(Gray_diff1),
-        .prev_pixel(Gray_diff2),  
+        .curr_pixel(sobel_out1),
+        .prev_pixel(sobel_out2),  
         .motion_detected(text_en),
         .motion_pixel_out(motion_diff_red),
         .v_sync(v_sync)
