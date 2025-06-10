@@ -70,6 +70,8 @@ module Mopology_Filter #(
     logic [2:0] dilate_valid_pipeline;
 
     // === Erode ===
+    // 윤곽선을 제거하고, 노이즈 제거 및 객체 축소
+    // 3x3 픽셀에서 모든 값이 1(흰색)이면 중심 픽셀을 1로 설정, 
     always_ff @(posedge clk) begin
         if (reset) begin
             erode_valid_pipeline <= 3'b0;
@@ -117,6 +119,9 @@ module Mopology_Filter #(
     end
 
     // === Dilate ===
+    // 객체의 외곽 확장, 객체 확대 or 노이즈 제거
+    // 3x3 픽셀 내 하나라도 1이면 중심 픽셀 = 1(흰색)
+    // 결과적으로 : 흰색 노이즈 제거 + 객체 남기고 경계 다듬기
     always_ff @(posedge clk) begin
         if (reset) begin
             dilate_valid_pipeline <= 3'b0;
