@@ -230,9 +230,6 @@ module sobel_filter (
     (* ram_style = "block" *) logic [3:0] line_buffer_1[0:IMG_WIDTH-1];
     (* ram_style = "block" *) logic [3:0] line_buffer_2[0:IMG_WIDTH-1];
 
-    //logic [3:0] line_buffer_1[0:IMG_WIDTH-1];
-    //logic [3:0] line_buffer_2[0:IMG_WIDTH-1];
-
     logic [3:0] p11, p12, p13;
     logic [3:0] p21, p22, p23;
     logic [3:0] p31, p32, p33;
@@ -244,13 +241,6 @@ module sobel_filter (
     logic [10:0] mag;
 
     integer i;
-
-    // assign display_en = (x_pixel < 320) && (120 < y_pixel) && (y_pixel < 360);
-
-    // assign s_filter_red = sobel_out[3:0];      //((mag_sobel_0[12:5] > threshold) && sobel_en) ? 4'hF : 4'h0;
-    // assign s_filter_blue = sobel_out[3:0];     //((mag_sobel_1[12:5] > threshold) && sobel_en) ? 4'hF : 4'h0;
-    // assign s_filter_green = sobel_out[3:0];    //((mag_sobel_2[12:5] > threshold) && sobel_en) ? 4'hF : 4'h0;
-
 
     always @(posedge clk) begin
         if (reset) begin
@@ -299,11 +289,7 @@ module sobel_filter (
             gx <= (p13 + (p23 << 1) + p33) - (p11 + (p21 << 1) + p31);
             gy <= (p31 + (p32 << 1) + p33) - (p11 + (p12 << 1) + p13);
             mag <= (gx[10] ? -gx : gx) + (gy[10] ? -gy : gy);
-            //if((x_pixel < 320 - 2) && (120 < y_pixel) && (y_pixel < 360)) begin
-                sobel_out <= (mag > THRESHOLD) ? 12'hFFF : 12'h0;
-            //end //else begin
-                //sobel_out <= 0;
-            //end
+            sobel_out <= (mag > THRESHOLD) ? 12'hFFF : 12'h0;
         end else begin
             sobel_out <= 0;
         end

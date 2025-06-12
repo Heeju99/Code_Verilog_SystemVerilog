@@ -26,28 +26,28 @@ module buzzer_PWM (
 
     localparam int NOTE_COUNT = 20;
 
-    note_t melody[NOTE_COUNT] = '{
-        '{MI, DUR_EIGHTH},
-        '{MUTE, DUR_EIGHTH},
-        '{LA, DUR_EIGHTH},
-        '{MUTE, DUR_EIGHTH},
-        '{LA, DUR_QUARTER},
-        '{MUTE, DUR_QUARTER},
-        '{LA, DUR_QUARTER},
-        '{MUTE, DUR_QUARTER},
-        '{SOL, DUR_QUARTER},
-        '{MUTE, DUR_QUARTER},
-        '{LA, DUR_EIGHTH},
-        '{MUTE, DUR_EIGHTH},
-        '{LA, DUR_EIGHTH},
-        '{MUTE, DUR_EIGHTH},
-        '{MI, DUR_EIGHTH},
-        '{MUTE, DUR_EIGHTH},
-        '{MI, DUR_EIGHTH},
-        '{MUTE, DUR_EIGHTH},
-        '{SOL, DUR_HALF},
-        '{MUTE, DUR_HALF}
-    };
+ note_t melody[NOTE_COUNT] = '{
+    '{MI, DUR_EIGHTH},
+    '{MUTE, DUR_EIGHTH},
+    '{LA, DUR_EIGHTH},
+    '{MUTE, DUR_EIGHTH},
+    '{LA, DUR_QUARTER},
+    '{MUTE, DUR_QUARTER},
+    '{LA, DUR_QUARTER},
+    '{MUTE, DUR_QUARTER},
+    '{SOL, DUR_QUARTER},
+    '{MUTE, DUR_QUARTER},
+    '{LA, DUR_EIGHTH},
+    '{MUTE, DUR_EIGHTH},
+    '{LA, DUR_EIGHTH},
+    '{MUTE, DUR_EIGHTH},
+    '{MI, DUR_EIGHTH},
+    '{MUTE, DUR_EIGHTH},
+    '{MI, DUR_EIGHTH},
+    '{MUTE, DUR_EIGHTH},
+    '{SOL, DUR_HALF},
+    '{MUTE, DUR_HALF}
+ };
 
     // 내부 상태
     play_state_t play_state = IDLE;
